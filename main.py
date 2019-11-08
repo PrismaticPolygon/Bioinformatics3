@@ -129,43 +129,23 @@ def max_value(score_d, score_u, score_l, backtrack_matrix, i, j):
     return score_l
 
 
-
-# Now, can I actually remember how this works? Charlie hasn't even done this in NumPy!
-# And it'd be more of a dataframe anywhere. But I guess behind the scenes one if just a proxy for the other
-# anyway.
-
-# Nice. Which dimension is which?
-
 def build_backtrack_scoring_matrix(seq1, seq2, alphabet, scoring_matrix):
 
-    i = len(seq1)
-    j = len(seq2)
+    i = len(seq1) + 1
+    j = len(seq2) + 1
+    gap_cost = c("_", "_", alphabet, scoring_matrix)
+    backtrack_scoring_matrix = np.zeros((i, j), dtype=np.int8)
 
-    backtrack_scoring_matrix = np.zeros((i + 1, j + 1), dtype=np.int8)
+    for k in range(1, i):
 
-    value = 0
+        backtrack_scoring_matrix[0, k] = backtrack_scoring_matrix[0, k - 1] + c(seq1[k - 1], "_", alphabet, scoring_matrix)
 
-    for k in range(i):
+    for k in range(1, j):
 
-        backtrack_scoring_matrix[0, k] = value
+        backtrack_scoring_matrix[k, 0] = backtrack_scoring_matrix[k - 1, 0] + c(seq2[k - 1], "_", alphabet, scoring_matrix)
 
-        value += c(seq1[k], "_", alphabet, scoring_matrix)
-
-    value += c("_", "_", alphabet, scoring_matrix)
-
-    backtrack_scoring_matrix[0, -1] = value
-
-    value = 0
-
-    for k in range(j):
-
-        backtrack_scoring_matrix[k, 0] = value
-
-        value += c(seq2[k], "_", alphabet, scoring_matrix)
-
-    value += c("_", "_", alphabet, scoring_matrix)
-
-    backtrack_scoring_matrix[-1, 0] = value
+    backtrack_scoring_matrix[-1, 0] = backtrack_scoring_matrix[-2, 0] + gap_cost
+    backtrack_scoring_matrix[0, -1] = backtrack_scoring_matrix[0, -2] + gap_cost
 
     return backtrack_scoring_matrix
 

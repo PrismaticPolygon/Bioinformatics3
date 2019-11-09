@@ -18,19 +18,19 @@ def dynprog(alphabet, scoring_matrix, s, t):
     ALPHABET = alphabet + "_"
     SCORING_MATRIX = np.array(scoring_matrix)
 
-    backtrack_matrix = np.full((len(s) + 1, len(t) + 1), b" ", dtype="string_")
-    backtrack_scoring_matrix = np.zeros((len(s) + 1, len(t) + 1), dtype="int8")
+    backtrack_matrix = np.full((len(s) + 1, len(t) + 1), b"E", dtype="string_") # Implicitly fill top-left corner
+    backtrack_scoring_matrix = np.zeros((len(s) + 1, len(t) + 1), dtype="int8") # Implicitly fill top-left corner
+
+    print(backtrack_matrix)
+    # I must overwrite it somewhere. But where?
+
+    # There's no 'E'.
 
     for i in range(len(s) + 1): # y
 
         for j in range(len(t) + 1): # x
 
-            if i == 0 and j == 0:   # Top left
-
-                backtrack_scoring_matrix[0, 0] = 0
-                backtrack_matrix[0, 0] = "E"
-
-            elif i == 0 and j > 0:  # First row
+            if i == 0 and j > 0:  # First row
 
                 backtrack_scoring_matrix[0, j] = backtrack_scoring_matrix[0, j - 1] + c(t[j - 1], "_")
                 backtrack_matrix[0, j] = "L"
@@ -40,16 +40,22 @@ def dynprog(alphabet, scoring_matrix, s, t):
                 backtrack_scoring_matrix[i, 0] = backtrack_scoring_matrix[i - 1, 0] + c(s[i - 1], "_")
                 backtrack_matrix[i, 0] = "U"
 
-            else:
+            elif i != 0 and j != 0:
 
                 match = backtrack_scoring_matrix[i - 1][j - 1] + c(s[i - 1], t[j - 1])
                 delete = backtrack_scoring_matrix[i][j - 1] + c(s[i - 1], "_")
                 insert = backtrack_scoring_matrix[i - 1][j] + c(t[j - 1], "_")
 
+                # It must be here, logically.
+
                 direction, score = max_score(match, delete, insert)
 
                 backtrack_matrix[i, j] = direction
                 backtrack_scoring_matrix[i, j] = score
+
+    print(s, t)
+    print(backtrack_scoring_matrix)
+    print(backtrack_matrix)
 
     best_score = backtrack_scoring_matrix[-1][-1]
     seq1, seq2 = track_back(backtrack_matrix, s, t)

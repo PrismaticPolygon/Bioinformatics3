@@ -1,16 +1,6 @@
 import numpy as np
 
 
-def c(c1, c2):
-
-    global ALPHABET, SCORING_MATRIX
-
-    i = ALPHABET.index(c1)
-    j = ALPHABET.index(c2)
-
-    return SCORING_MATRIX[i, j]
-
-
 def dynprog(alphabet, scoring_matrix, s, t):
 
     global ALPHABET, SCORING_MATRIX
@@ -18,107 +8,141 @@ def dynprog(alphabet, scoring_matrix, s, t):
     ALPHABET = alphabet + "_"
     SCORING_MATRIX = np.array(scoring_matrix)
 
-    backtrack_matrix = np.full((len(s) + 1, len(t) + 1), b"E", dtype="string_") # Implicitly fill top-left corner
-    backtrack_scoring_matrix = np.zeros((len(s) + 1, len(t) + 1), dtype="int8") # Implicitly fill top-left corner
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+    D = np.zeros((size_y, size_x), dtype="int8") # Implicitly fill top-left corner as 0.
 
-    print(backtrack_matrix)
-    # I must overwrite it somewhere. But where?
+    for y in range(size_y): # y
 
-    # There's no 'E'.
+        for x in range(size_x): # x
 
-    for i in range(len(s) + 1): # y
+            if y == 0 and x > 0:  # First row (the cost of matching t with all gaps)
 
-        for j in range(len(t) + 1): # x
+                D[0, x] = D[0, x - 1] + cost(t[x - 1], "_")
 
-            if i == 0 and j > 0:  # First row
+            elif x == 0 and y > 0:  # First column (the cost of matching s with all gaps)
 
-                backtrack_scoring_matrix[0, j] = backtrack_scoring_matrix[0, j - 1] + c(t[j - 1], "_")
-                backtrack_matrix[0, j] = "L"
+                D[y, 0] = D[y - 1, 0] + cost(s[y - 1], "_")
 
-            elif j == 0 and i > 0:  # First column
+            elif y != 0 and x != 0:
 
-                backtrack_scoring_matrix[i, 0] = backtrack_scoring_matrix[i - 1, 0] + c(s[i - 1], "_")
-                backtrack_matrix[i, 0] = "U"
+                match_score = match(D, y, x, s, t)
+                insert_gap_into_s_cost = insert_gap_into_s(D, y, x, t)
+                insert_gap_into_t_cost = insert_gap_into_t(D, y, x, s)
 
-            elif i != 0 and j != 0:
+                # print((y, x))
+                # print("Match: ", match_score)
+                # print("Insert into s: ", insert_gap_into_s_cost)
+                # print("Insert into t:", insert_gap_into_t_cost)
 
-                match = backtrack_scoring_matrix[i - 1][j - 1] + c(s[i - 1], t[j - 1])
-                delete = backtrack_scoring_matrix[i][j - 1] + c(s[i - 1], "_")
-                insert = backtrack_scoring_matrix[i - 1][j] + c(t[j - 1], "_")
+                D[y, x] = max(
+                    match(D, y, x, s, t),           # The cost of matching two characters
+                    insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
+                    insert_gap_into_t(D, y, x, s)   # The cost of matching a gap in t with a character in s
+                )
 
-                # It must be here, logically.
+            print(D)
 
-                direction, score = max_score(match, delete, insert)
+            # So it goes wrong on the last bit of the third row. We choose a value which is too high.
+            # Logically, we must get a 4 from somewhere.
+            # But there are no 4s!
 
-                backtrack_matrix[i, j] = direction
-                backtrack_scoring_matrix[i, j] = score
+    print(D)
 
+    # This isn't actually right.
+
+    score = D[-1][-1]
+    print(score)
+    s_align, t_align, s_matches, t_matches = traceback(D, s, t)
+
+    print(s_align)
+    print(t_align)
+    print(s_matches)
+    print(t_matches)
+
+    return score, s_matches, t_matches
+
+    #
+    # print("{} -> {}".format(s, s_align))
+    # print("{} -> {}".format(t, t_align))
+    # print(score)
+
+# Going up insert into x-axis string
+
+def insert_gap_into_s(D, y, x, t):  # Conceptually L
+
+    return D[y - 1][x] + cost(t[x - 1], "_")
+
+
+def insert_gap_into_t(D, y, x, s):  # Conceptually U
+
+    return D[y][x - 1] + cost(s[y - 1], "_")
+
+
+def match(D, y, x, s, t):   # Conceptually D
+
+    return D[y - 1][x - 1] + cost(s[y - 1], t[x - 1])
+
+
+def traceback(D, s, t):
+
+    y, x = len(s), len(t)
+
+    # print(y, x, D.shape)
     print(s, t)
-    print(backtrack_scoring_matrix)
-    print(backtrack_matrix)
 
-    best_score = backtrack_scoring_matrix[-1][-1]
-    seq1, seq2 = track_back(backtrack_matrix, s, t)
+    s_align, t_align = "", ""
+    s_matches = []
+    t_matches = []
 
-    matches = []
-    mismatches = []
+    while y != 0 or x != 0:
 
-    for i in range(len(seq1)):
+        current = D[y][x]
 
-        if seq1[i] == seq2[i]:
+        # print("({}, {})".format(y, x))
 
-            matches.append(i)
+        if current == match(D, y, x, s, t): #D
+
+            # print("Match")
+
+            x -= 1
+            y -= 1
+            s_align = s[y] + s_align
+            t_align = t[x] + t_align
+
+            s_matches.append(y)
+            t_matches.append(x)
+
+        elif current == insert_gap_into_s(D, y, x, t):  # L
+
+            # print("Insert gap into t")
+
+            y -= 1
+            s_align = s[y] + s_align
+            t_align = "_" + t_align
+
+        elif current == insert_gap_into_t(D, y, x, s):  # U
+
+            # print("Insert gap into s")
+
+            x -= 1
+            s_align = "_" + s_align
+            t_align = t[x] + t_align
 
         else:
 
-            mismatches.append(i)
+            raise ValueError("Something's fucked!")
 
-    print(matches, mismatches)
+        # print(s_align, t_align)
 
-    return best_score, matches, mismatches
-
-
-def track_back(backtrack_matrix, s, t):
-
-    i, j = len(s), len(t)
-    seq1, seq2 = "", ""
-
-    current = backtrack_matrix[-1][-1]
-
-    while current != b'E':
-
-        if current == b'D':
-
-            j -= 1
-            i -= 1
-            seq1 = s[i] + seq1
-            seq2 = t[j] + seq2
-
-        elif current == b'L':
-
-            i -= 1
-            seq1 = s[i] + seq1
-            seq2 = '-' + seq2
-
-        elif current == b'U':
-
-            j -= 1
-            seq1 = '-' + seq1
-            seq2 = t[j] + seq2
-
-        current = backtrack_matrix[j][i]
-
-    return seq1, seq2
+    return s_align, t_align, s_matches[::-1], t_matches[::-1]
 
 
-def max_score(match, insert, delete):
+def cost(c1, c2):
 
-    if match >= insert and match >= delete:
+    global ALPHABET, SCORING_MATRIX
 
-        return "D", match
+    i = ALPHABET.index(c1)
+    j = ALPHABET.index(c2)
 
-    elif insert >= delete:
-
-        return "U", insert
-
-    return "L", delete
+    return SCORING_MATRIX[i, j]

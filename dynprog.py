@@ -26,57 +26,29 @@ def dynprog(alphabet, scoring_matrix, s, t):
 
             elif y != 0 and x != 0:
 
-                match_score = match(D, y, x, s, t)
-                insert_gap_into_s_cost = insert_gap_into_s(D, y, x, t)
-                insert_gap_into_t_cost = insert_gap_into_t(D, y, x, s)
-
-                # print((y, x))
-                # print("Match: ", match_score)
-                # print("Insert into s: ", insert_gap_into_s_cost)
-                # print("Insert into t:", insert_gap_into_t_cost)
-
                 D[y, x] = max(
                     match(D, y, x, s, t),           # The cost of matching two characters
                     insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
                     insert_gap_into_t(D, y, x, s)   # The cost of matching a gap in t with a character in s
                 )
 
-            print(D)
-
-            # So it goes wrong on the last bit of the third row. We choose a value which is too high.
-            # Logically, we must get a 4 from somewhere.
-            # But there are no 4s!
-
-    print(D)
-
-    # This isn't actually right.
-
     score = D[-1][-1]
-    print(score)
     s_align, t_align, s_matches, t_matches = traceback(D, s, t)
 
     print(s_align)
     print(t_align)
-    print(s_matches)
-    print(t_matches)
 
     return score, s_matches, t_matches
 
-    #
-    # print("{} -> {}".format(s, s_align))
-    # print("{} -> {}".format(t, t_align))
-    # print(score)
-
-# Going up insert into x-axis string
-
+# s is the y-axis string
 def insert_gap_into_s(D, y, x, t):  # Conceptually L
 
-    return D[y - 1][x] + cost(t[x - 1], "_")
+    return D[y][x - 1] + cost(t[x - 1], "_")
 
-
+# t is the x-axis string
 def insert_gap_into_t(D, y, x, s):  # Conceptually U
 
-    return D[y][x - 1] + cost(s[y - 1], "_")
+    return D[y - 1][x] + cost(s[y - 1], "_")
 
 
 def match(D, y, x, s, t):   # Conceptually D
@@ -88,9 +60,6 @@ def traceback(D, s, t):
 
     y, x = len(s), len(t)
 
-    # print(y, x, D.shape)
-    print(s, t)
-
     s_align, t_align = "", ""
     s_matches = []
     t_matches = []
@@ -99,11 +68,7 @@ def traceback(D, s, t):
 
         current = D[y][x]
 
-        # print("({}, {})".format(y, x))
-
-        if current == match(D, y, x, s, t): #D
-
-            # print("Match")
+        if current == match(D, y, x, s, t): # D
 
             x -= 1
             y -= 1
@@ -115,25 +80,20 @@ def traceback(D, s, t):
 
         elif current == insert_gap_into_s(D, y, x, t):  # L
 
-            # print("Insert gap into t")
+            x -= 1
+            s_align = "_" + s_align
+            t_align = t[x] + t_align
+
+
+        elif current == insert_gap_into_t(D, y, x, s):  # U
 
             y -= 1
             s_align = s[y] + s_align
             t_align = "_" + t_align
 
-        elif current == insert_gap_into_t(D, y, x, s):  # U
-
-            # print("Insert gap into s")
-
-            x -= 1
-            s_align = "_" + s_align
-            t_align = t[x] + t_align
-
         else:
 
             raise ValueError("Something's fucked!")
-
-        # print(s_align, t_align)
 
     return s_align, t_align, s_matches[::-1], t_matches[::-1]
 

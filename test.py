@@ -2,27 +2,27 @@ from dynprog import dynprog
 from dynproglin import dynproglin
 
 # Duo
-alphabet = "ABC"
-scoring_matrix = [
-    [1,-1,-2,-1],
-    [-1,2,-4,-1],
-    [-2,-4,3,-2],
-    [-1,-1,-2,0]
-]
-s = "ABCACA"
-t = "BAACB"
-
-# test.py
 # alphabet = "ABC"
 # scoring_matrix = [
-#     [1, -1, -2, -1],
-#     [-1, 2, -4, -1],
-#     [-2, -4, 3, -2],
-#     [-1, -1, -2, 0]
+#     [1,-1,-2,-1],
+#     [-1,2,-4,-1],
+#     [-2,-4,3,-2],
+#     [-1,-1,-2,0]
 # ]
-#
-# s = "AABBAACA"
-# t = "CBACCCBA"
+# s = "ABCACA"
+# t = "BAACB"
+
+# test.py
+alphabet = "ABC"
+scoring_matrix = [
+    [1, -1, -2, -1],
+    [-1, 2, -4, -1],
+    [-2, -4, 3, -2],
+    [-1, -1, -2, 0]
+]
+
+s = "AABBAACA"
+t = "CBACCCBA"
 
 # Biorecipes
 # alphabet = "ACGT"
@@ -37,15 +37,12 @@ t = "BAACB"
 # t = "ACGGTAG"
 
 
-# print("***** DYNPROG *****\n")
-
-# sequence1 = "A"
-# sequence2 = "CBACC"
+print("***** DYNPROG *****\n")
 
 a = dynprog(alphabet, scoring_matrix, s, t)
 
-# print("Score:   ", a[0])
-# print("Indices: ", a[1], a[2])
+print("Score:   ", a[0])
+print("Indices: ", a[1], a[2])
 
 # print("\n**** DYNPROGLIN ****\n")
 

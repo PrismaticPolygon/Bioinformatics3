@@ -27,6 +27,8 @@ def dynproglin_recursive(alphabet, scoring_matrix, s, t):
 
     s_align, t_align = "", ""
 
+    print(s, t)
+
     if len(s) == 0:
 
         for i in range(len(t)):
@@ -48,15 +50,17 @@ def dynproglin_recursive(alphabet, scoring_matrix, s, t):
         s_mid = int(len(s) / 2)
         score_l = build_score_matrix(s[:s_mid], t, sublinear=True)
 
-        # print("Score_l: ", score_l)
+        print("Score_l: ", score_l)
 
         score_r = build_score_matrix(rev(s[s_mid:]), rev(t), sublinear=True)
 
-        # print("Score_r", score_r)
+        print("Score_r", score_r)
+
+        print(score_l + rev(score_r))
 
         t_mid = np.argmax(score_l + rev(score_r))
 
-        # print("t_mid", t_mid)
+        print("t_mid", t_mid)
 
         z_l, w_l = dynproglin_recursive(alphabet, scoring_matrix, s[:s_mid], t[:t_mid])
         z_r, w_r = dynproglin_recursive(alphabet, scoring_matrix, s[s_mid:], t[t_mid:])
@@ -83,19 +87,20 @@ def get_alignment_indices(s_align, t_align):
 
     s_matches, t_matches = [], []
 
-    # One array should contain all the indices of s NOT matching with gaps.
     s_point = 0
     t_point = 0
 
     for i in range(len(s_align)):
 
         if s_align[i] != "_" and t_align[i] != "_":
+
             s_matches.append(s_point)
             t_matches.append(t_point)
             s_point += 1
             t_point += 1
 
         if s_align[i] != "_" and t_align[i] == "_":
+
             s_point += 1
 
         if s_align[i] == "_" and t_align[i] != "_":
@@ -139,6 +144,7 @@ def build_score_matrix(s, t, sublinear=False):
 
         if y > 0 and sublinear:
 
+            print(D[0])
             D[0] = np.copy(D[1])
 
         if y > size_y - 1 and sublinear:
@@ -173,7 +179,7 @@ def dynprog_align(alphabet, scoring_matrix, s, t):
 
     return s_align, t_align
 
-
+# Fuck's sake.
 
 def traceback(D, s, t):
 
@@ -244,17 +250,17 @@ def rev(l):
     return l[::-1]
 
 #
-# ALPHABET = "ABC_"
-# SCORING_MATRIX = np.array([
-#     [1,-1,-2,-1],
-#     [-1,2,-4,-1],
-#     [-2,-4,3,-2],
-#     [-1,-1,-2,0]
-# ])
-# s = "ABCACA"
-# t = "BAACBA"
-#
-# # Okay. The score matrix is just plain old wrong.
-#
-# print(build_score_matrix(s, t))
-# print(build_score_matrix(s, t, sublinear=True))
+ALPHABET = "ABC_"
+SCORING_MATRIX = np.array([
+    [1,-1,-2,-1],
+    [-1,2,-4,-1],
+    [-2,-4,3,-2],
+    [-1,-1,-2,0]
+])
+s = "ABCACA"
+t = "BAACBA"
+
+# Okay. The score matrix is just plain old wrong.
+
+print(build_score_matrix(s, t))
+print(build_score_matrix(s, t, sublinear=True))

@@ -12,12 +12,12 @@ of indices, one for each sequence, that realises this score.
 
 Marked automatically. 
 
-For Q2: read the linear-space algorithm in the textbook, which
-solves the global-alignment problem. To solve the local, modify
-this to work recursively:
-* It is easy to find the end-point of an optimal local alignment
-* If the corresponding starting-point can be found, we're done
-* If the starting-point is the the left, descend into that side;
-otherwise, descend into the right. 
-* In this manner some of the recursive subproblems become global alignment ones,
-while others become local alignment with a given endpoint. 
+BLAST is mostly involved in finding ungapped, locally optimal sequence alignments
+
+### BLAST
+* True match alignments are likely to contain somewhere within them a short stretch of identities
+(very high scoring matches)
+* These can be used as 'seeds' from which to extend out in seach for longer alignments
+* By keeping seed sequences short, the query sequence can be pre-processed and a table of all possible seeds
+generated
+

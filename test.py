@@ -1,4 +1,5 @@
-from main import dynprog, dynproglin, align_score
+from main import dynprog, dynproglin
+from heuralign import heuralign
 
 # Duo
 alphabet = "ABC"
@@ -9,7 +10,18 @@ scoring_matrix = [
     [-1,-1,-2,0]
 ]
 s = "ABCACA"
-t = "BAACBA"
+t = "BAACB"
+
+#BLAST
+# alphabet = "ABC"
+# scoring_matrix = [
+#     [1,-1,-2,-1],
+#     [-1,2,-4,-1],
+#     [-2,-4,3,-2],
+#     [-1,-1,-2,0]
+# ]
+# s = "AABCACA"
+# t = "CBACACA"
 
 # test.py
 # alphabet = "ABC"
@@ -36,14 +48,14 @@ t = "BAACBA"
 # t = "ACGGTAG"
 
 #
-print("***** DYNPROG *****\n")
+# print("***** DYNPROG *****\n")
 #
-a = dynprog(alphabet, scoring_matrix, s, t)
-
-print("Score:   ", a[0])
-print("Indices: ", a[1], a[2])
-print("")
-
+# a = dynprog(alphabet, scoring_matrix, s, t)
+#
+# print("Score:   ", a[0])
+# print("Indices: ", a[1], a[2])
+# print("")
+#
 print("**** DYNPROGLIN ****\n")
 
 a = dynproglin(alphabet, scoring_matrix, s, t)
@@ -51,3 +63,11 @@ a = dynproglin(alphabet, scoring_matrix, s, t)
 print("Score:   ", a[0])
 print("Indices: ", a[1], a[2])
 print("")
+
+# print("***** HEURALIGN *****\n")
+
+# a = heuralign(alphabet, scoring_matrix, s, t)
+#
+# print("Score:   ", a[0])
+# print("Indices: ", a[1], a[2])
+# print("")

@@ -67,30 +67,41 @@ def dynproglin_recursive(alphabet, scoring_matrix, s, t):
     return s_align, t_align
 
 
-
-
-# First: are we generating the matrices correctly?
-
 def dynproglin(alphabet, scoring_matrix, s, t):
 
     s_align, t_align = dynproglin_recursive(alphabet, scoring_matrix, s, t)
-    score = align_score(s_align, t_align)
-    s_matches, t_matches = [], []
 
     print(s_align)
     print(t_align)
 
-    for i in range(len(s_align)):
-
-        if s_align[i] != "_":
-
-            t_matches.append(i)
-
-        if t_align[i] != "_":
-
-            s_matches.append(i)
+    score = align_score(s_align, t_align)
+    s_matches, t_matches = get_alignment_indices(s_align, t_align)
 
     return score, s_matches, t_matches
+
+def get_alignment_indices(s_align, t_align):
+
+    s_matches, t_matches = [], []
+
+    # One array should contain all the indices of s NOT matching with gaps.
+    s_point = 0
+    t_point = 0
+
+    for i in range(len(s_align)):
+
+        if s_align[i] != "_" and t_align[i] != "_":
+            s_matches.append(s_point)
+            t_matches.append(t_point)
+            s_point += 1
+            t_point += 1
+
+        if s_align[i] != "_" and t_align[i] == "_":
+            s_point += 1
+
+        if s_align[i] == "_" and t_align[i] != "_":
+            t_point += 1
+
+    return s_matches, t_matches
 
 
 
@@ -177,6 +188,8 @@ def traceback(D, s, t):
         current = D[y][x]
 
         if current == match(D, y, x, s, y, t): # D
+
+            # I'm still not convinced.
 
             x -= 1
             y -= 1

@@ -68,6 +68,9 @@ def dynproglin_recursive(alphabet, scoring_matrix, s, t):
 
 
 
+
+# First: are we generating the matrices correctly?
+
 def dynproglin(alphabet, scoring_matrix, s, t):
 
     s_align, t_align = dynproglin_recursive(alphabet, scoring_matrix, s, t)
@@ -90,6 +93,7 @@ def dynproglin(alphabet, scoring_matrix, s, t):
     return score, s_matches, t_matches
 
 
+
 def build_score_matrix(s, t, sublinear=False):
 
     size_y = len(s) + 1  # y-axis
@@ -107,34 +111,42 @@ def build_score_matrix(s, t, sublinear=False):
 
             elif x == 0 and y > 0:  # First column (the cost of matching s with all gaps)
 
-                new_cell = (1, 0) if sublinear else (y, 0)
-                old_cell = (0, 0) if sublinear else (y - 1, 0)
-                D[new_cell] = D[old_cell] + cost(s[y - 1], "_")
+                new_y = 1 if sublinear else y
+                old_y = 0 if sublinear else y - 1
+
+                D[new_y, 0] = D[old_y, 0] + cost(s[y - 1], "_")
 
             elif y != 0 and x != 0:
 
-                if sublinear:
+                D_y = 1 if sublinear else y # D_y is the y index of D; y is the index of the string
 
-                    D[1, x] = max(
-                        match(D, 0, x, s, t),  # The cost of matching two characters
-                        insert_gap_into_s(D, 0, x, t),  # The cost of matching a gap in s with a character in t
-                        insert_gap_into_t(D, 0, x, s)  # The cost of matching a gap in t with a character in s
-                    )
+                D[D_y, x] = max(
+                    match(D, D_y, x, s, y, t),  # The cost of matching two characters
+                    insert_gap_into_s(D, D_y, x, t),  # The cost of matching a gap in s with a character in t
+                    insert_gap_into_t(D, D_y, x, s, y)  # The cost of matching a gap in t with a character in s
+                )
 
-                else:
+        if y > 0 and sublinear:
 
-                    D[y, x] = max(
-                        match(D, y, x, s, t),  # The cost of matching two characters
-                        insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
-                        insert_gap_into_t(D, y, x, s)  # The cost of matching a gap in t with a character in s
-                    )
+            D[0] = np.copy(D[1])
 
-        if sublinear:
+        if y > size_y - 1 and sublinear:
 
-            D[0, :] = D[1, :]
+            D[1] = np.zeros(size_y)
 
     return D[1] if sublinear else D
 
+def match(D, D_y, x, s, s_y, t):   # Conceptually D
+
+    return D[D_y - 1][x - 1] + cost(s[s_y - 1], t[x - 1])
+
+def insert_gap_into_s(D, D_y, x, t):  # s is the y-axis string: conceptually L
+
+    return D[D_y][x - 1] + cost(t[x - 1], "_")
+
+def insert_gap_into_t(D, D_y, x, s, s_y):  # t is the x-axis string: conceptually U
+
+    return D[D_y - 1][x] + cost(s[s_y - 1], "_")
 
 def dynprog_align(alphabet, scoring_matrix, s, t):
 
@@ -151,19 +163,6 @@ def dynprog_align(alphabet, scoring_matrix, s, t):
     return s_align, t_align
 
 
-def insert_gap_into_s(D, y, x, t):  # s is the y-axis string: conceptually L
-
-    return D[y][x - 1] + cost(t[x - 1], "_")
-
-
-def insert_gap_into_t(D, y, x, s):  # t is the x-axis string: conceptually U
-
-    return D[y - 1][x] + cost(s[y - 1], "_")
-
-def match(D, y, x, s, t):   # Conceptually D
-
-    return D[y - 1][x - 1] + cost(s[y - 1], t[x - 1])
-
 
 def traceback(D, s, t):
 
@@ -177,7 +176,7 @@ def traceback(D, s, t):
 
         current = D[y][x]
 
-        if current == match(D, y, x, s, t): # D
+        if current == match(D, y, x, s, y, t): # D
 
             x -= 1
             y -= 1
@@ -194,7 +193,7 @@ def traceback(D, s, t):
             t_align = t[x] + t_align
 
 
-        elif current == insert_gap_into_t(D, y, x, s):  # U
+        elif current == insert_gap_into_t(D, y, x, s, y):  # U
 
             y -= 1
             s_align = s[y] + s_align
@@ -230,3 +229,19 @@ def align_score(s_align, t_align):
 def rev(l):
 
     return l[::-1]
+
+#
+# ALPHABET = "ABC_"
+# SCORING_MATRIX = np.array([
+#     [1,-1,-2,-1],
+#     [-1,2,-4,-1],
+#     [-2,-4,3,-2],
+#     [-1,-1,-2,0]
+# ])
+# s = "ABCACA"
+# t = "BAACBA"
+#
+# # Okay. The score matrix is just plain old wrong.
+#
+# print(build_score_matrix(s, t))
+# print(build_score_matrix(s, t, sublinear=True))

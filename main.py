@@ -8,87 +8,68 @@ def dynprog(alphabet, scoring_matrix, s, t):
     SCORING_MATRIX = np.array(scoring_matrix)
 
     D = build_score_matrix(s, t)
-
     score = D[-1][-1]
     s_align, t_align, s_matches, t_matches = traceback(D, s, t)
 
-    print(s_align)
-    print(t_align)
+    return score, s_matches, t_matches, s_align, t_align
 
-    return score, s_matches, t_matches
-
-
-def dynproglin_recursive(alphabet, scoring_matrix, s, t):
+def dynproglin(alphabet, scoring_matrix, s, t):
 
     global ALPHABET, SCORING_MATRIX
 
     ALPHABET = alphabet + "_"
     SCORING_MATRIX = np.array(scoring_matrix)
 
-    s_align, t_align = "", ""
+    def recurse(s, t):
 
-    print(s, t)
+        s_align, t_align = "", ""
 
-    if len(s) == 0:
+        if len(s) == 0:
 
-        for i in range(len(t)):
-            s_align += "_"
-            t_align += t[i]
+            for i in range(len(t)):
 
-    elif len(t) == 0:
+                s_align += "_"
+                t_align += t[i]
 
-        for i in range(len(s)):
-            s_align += s[i]
-            t_align += "_"
+        elif len(t) == 0:
 
-    elif len(s) == 1 or len(t) == 1:
+            for i in range(len(s)):
 
-        s_align, t_align = dynprog_align(alphabet, scoring_matrix, s, t)
+                s_align += s[i]
+                t_align += "_"
 
-    else:
+        elif len(s) == 1 or len(t) == 1:
 
-        s_mid = int(len(s) / 2)
-        score_l = build_score_matrix(s[:s_mid], t, sublinear=True)
+            result = dynprog(alphabet, scoring_matrix, s, t)
+            s_align = result[3]
+            t_align = result[4]
 
-        print("Score_l: ", score_l)
+        else:
 
-        score_r = build_score_matrix(rev(s[s_mid:]), rev(t), sublinear=True)
+            s_mid = int(len(s) / 2)
+            score_l = build_score_matrix(s[:s_mid], t, sublinear=True)
+            score_r = build_score_matrix(rev(s[s_mid:]), rev(t), sublinear=True)
+            t_mid = np.argmax(score_l + rev(score_r))
 
-        print("Score_r", score_r)
+            z_l, w_l = recurse(s[:s_mid], t[:t_mid])
+            z_r, w_r = recurse(s[s_mid:], t[t_mid:])
 
-        print(score_l + rev(score_r))
+            s_align = z_l + z_r
+            t_align = w_l + w_r
 
-        t_mid = np.argmax(score_l + rev(score_r))
+        return s_align, t_align
 
-        print("t_mid", t_mid)
-
-        z_l, w_l = dynproglin_recursive(alphabet, scoring_matrix, s[:s_mid], t[:t_mid])
-        z_r, w_r = dynproglin_recursive(alphabet, scoring_matrix, s[s_mid:], t[t_mid:])
-
-        s_align = z_l + z_r
-        t_align = w_l + w_r
-
-    return s_align, t_align
-
-
-def dynproglin(alphabet, scoring_matrix, s, t):
-
-    s_align, t_align = dynproglin_recursive(alphabet, scoring_matrix, s, t)
-
-    print(s_align)
-    print(t_align)
+    s_align, t_align = recurse(s, t)
 
     score = align_score(s_align, t_align)
     s_matches, t_matches = get_alignment_indices(s_align, t_align)
 
-    return score, s_matches, t_matches
+    return score, s_matches, t_matches, s_align, t_align
 
 def get_alignment_indices(s_align, t_align):
 
     s_matches, t_matches = [], []
-
-    s_point = 0
-    t_point = 0
+    s_point, t_point = 0, 0
 
     for i in range(len(s_align)):
 
@@ -96,6 +77,7 @@ def get_alignment_indices(s_align, t_align):
 
             s_matches.append(s_point)
             t_matches.append(t_point)
+
             s_point += 1
             t_point += 1
 
@@ -104,11 +86,10 @@ def get_alignment_indices(s_align, t_align):
             s_point += 1
 
         if s_align[i] == "_" and t_align[i] != "_":
+
             t_point += 1
 
     return s_matches, t_matches
-
-
 
 def build_score_matrix(s, t, sublinear=False):
 
@@ -144,7 +125,6 @@ def build_score_matrix(s, t, sublinear=False):
 
         if y > 0 and sublinear:
 
-            print(D[0])
             D[0] = np.copy(D[1])
 
         if y > size_y - 1 and sublinear:
@@ -165,22 +145,6 @@ def insert_gap_into_t(D, D_y, x, s, s_y):  # t is the x-axis string: conceptuall
 
     return D[D_y - 1][x] + cost(s[s_y - 1], "_")
 
-def dynprog_align(alphabet, scoring_matrix, s, t):
-
-    global ALPHABET, SCORING_MATRIX
-
-    ALPHABET = alphabet + "_"
-    SCORING_MATRIX = np.array(scoring_matrix)
-
-    D = build_score_matrix(s, t)
-
-    score = D[-1][-1]
-    s_align, t_align, s_matches, t_matches = traceback(D, s, t)
-
-    return s_align, t_align
-
-# Fuck's sake.
-
 def traceback(D, s, t):
 
     y, x = len(s), len(t)
@@ -194,8 +158,6 @@ def traceback(D, s, t):
         current = D[y][x]
 
         if current == match(D, y, x, s, y, t): # D
-
-            # I'm still not convinced.
 
             x -= 1
             y -= 1
@@ -224,18 +186,13 @@ def traceback(D, s, t):
 
     return s_align, t_align, s_matches[::-1], t_matches[::-1]
 
-
 def cost(c1, c2):
 
     global ALPHABET, SCORING_MATRIX
 
-    i, j = ALPHABET.index(c1), ALPHABET.index(c2)
-
-    return SCORING_MATRIX[i, j]
+    return SCORING_MATRIX[ALPHABET.index(c1), ALPHABET.index(c2)]
 
 def align_score(s_align, t_align):
-
-    assert len(s_align) == len(t_align)
 
     score = 0
 
@@ -248,19 +205,3 @@ def align_score(s_align, t_align):
 def rev(l):
 
     return l[::-1]
-
-#
-ALPHABET = "ABC_"
-SCORING_MATRIX = np.array([
-    [1,-1,-2,-1],
-    [-1,2,-4,-1],
-    [-2,-4,3,-2],
-    [-1,-1,-2,0]
-])
-s = "ABCACA"
-t = "BAACBA"
-
-# Okay. The score matrix is just plain old wrong.
-
-print(build_score_matrix(s, t))
-print(build_score_matrix(s, t, sublinear=True))

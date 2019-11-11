@@ -1,73 +1,39 @@
 from main import dynprog, dynproglin
 from heuralign import heuralign
 
-# Duo
-alphabet = "ABC"
-scoring_matrix = [
-    [1,-1,-2,-1],
-    [-1,2,-4,-1],
-    [-2,-4,3,-2],
-    [-1,-1,-2,0]
-]
-s = "ABCACA"
-t = "BAACB"
 
-#BLAST
-# alphabet = "ABC"
-# scoring_matrix = [
-#     [1,-1,-2,-1],
-#     [-1,2,-4,-1],
-#     [-2,-4,3,-2],
-#     [-1,-1,-2,0]
-# ]
-# s = "AABCACA"
-# t = "CBACACA"
+tests = {
+    "Duo": ("ABC", [
+            [1,-1,-2,-1],
+            [-1,2,-4,-1],
+            [-2,-4,3,-2],
+            [-1,-1,-2,0]
+            ], "ABCACA", "BAACB"),
+    "test.py": ("ABC", [
+            [1, -1, -2, -1],
+            [-1, 2, -4, -1],
+            [-2, -4, 3, -2],
+            [-1, -1, -2, 0]
+        ], "AABBAACA", "CBACCCBA"),
+    "biorecipes": ("ACGT", [
+            [2,-1,1,-1,-2],
+            [-1,2,-1,1,-2],
+            [1,-1,2,-1,-2],
+            [-1,1,-1,2,-2],
+            [-2,-2,-2,-2,0]],
+                   "CCTAAG", "ACGGTAG")
+}
 
-# test.py
-# alphabet = "ABC"
-# scoring_matrix = [
-#     [1, -1, -2, -1],
-#     [-1, 2, -4, -1],
-#     [-2, -4, 3, -2],
-#     [-1, -1, -2, 0]
-# ]
-#
-# s = "AABBAACA"
-# t = "CBACCCBA"
+functions = [dynprog, dynproglin, heuralign]
 
-# Biorecipes
-# alphabet = "ACGT"
-# scoring_matrix = [
-#     [2,-1,1,-1,-2],
-#     [-1,2,-1,1,-2],
-#     [1,-1,2,-1,-2],
-#     [-1,1,-1,2,-2],
-#     [-2,-2,-2,-2,0]
-# ]
-# s = "CCTAAG"
-# t = "ACGGTAG"
+for function in functions:
 
-#
-# print("***** DYNPROG *****\n")
-#
-# a = dynprog(alphabet, scoring_matrix, s, t)
-#
-# print("Score:   ", a[0])
-# print("Indices: ", a[1], a[2])
-# print("")
-#
-print("**** DYNPROGLIN ****\n")
+    print("**** " + function.__name__.upper() + " ****\n")
 
-a = dynproglin(alphabet, scoring_matrix, s, t)
+    a = function(*tests["Duo"])
 
-print("Score:   ", a[0])
-print("Indices: ", a[1], a[2])
-print("")
-
-# print("***** HEURALIGN *****\n")
-
-# a = heuralign(alphabet, scoring_matrix, s, t)
-#
-# print("Score:   ", a[0])
-# print("Indices: ", a[1], a[2])
-# print("")
+    print(a[3])
+    print(a[4])
+    print("Score:   ", a[0])
+    print("Indices: ", a[1], a[2])
+    print("")

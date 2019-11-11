@@ -1,20 +1,19 @@
 import numpy as np
 
 
-def dynprog(alphabet, scoring_matrix, s, t):
-
-    global ALPHABET, SCORING_MATRIX
-
-    ALPHABET = alphabet + "_"
-    SCORING_MATRIX = np.array(scoring_matrix)
+def build_score_matrix(s, t, sublinear=False):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
-    D = np.zeros((size_y, size_x), dtype="int8") # Implicitly fill top-left corner as 0.
+    shape = (2, size_x) if sublinear else (size_y, size_x)
+    D = np.zeros(shape, dtype="int8")
 
-    for y in range(size_y): # y
+    # Fuck. Flew too close to the sun, indeed.
+    # I can merge them later.
 
-        for x in range(size_x): # x
+    for y in range(size_y):  # y
+
+        for x in range(size_x):  # x
 
             if y == 0 and x > 0:  # First row (the cost of matching t with all gaps)
 
@@ -22,15 +21,35 @@ def dynprog(alphabet, scoring_matrix, s, t):
 
             elif x == 0 and y > 0:  # First column (the cost of matching s with all gaps)
 
-                D[y, 0] = D[y - 1, 0] + cost(s[y - 1], "_")
+                new_cell = (1, 0) if sublinear else (y, 0)
+                old_cell = (0, 0) if sublinear else (y - 1, 0)
+                D[new_cell] = D[old_cell] + cost(s[y - 1], "_")
 
             elif y != 0 and x != 0:
 
-                D[y, x] = max(
-                    match(D, y, x, s, t),           # The cost of matching two characters
+                cell = (1, x) if sublinear else (y, x)
+                D[cell] = max(
+                    match(D, y, x, s, t),  # The cost of matching two characters
                     insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
-                    insert_gap_into_t(D, y, x, s)   # The cost of matching a gap in t with a character in s
+                    insert_gap_into_t(D, y, x, s)  # The cost of matching a gap in t with a character in s
                 )
+
+        if sublinear:
+
+            D[0, :] = D[1, :]
+
+    return D[1] if sublinear else D
+
+
+
+def dynprog(alphabet, scoring_matrix, s, t):
+
+    global ALPHABET, SCORING_MATRIX
+
+    ALPHABET = alphabet + "_"
+    SCORING_MATRIX = np.array(scoring_matrix)
+
+    D = build_score_matrix(s, t)
 
     score = D[-1][-1]
     s_align, t_align, s_matches, t_matches = traceback(D, s, t)
@@ -39,6 +58,21 @@ def dynprog(alphabet, scoring_matrix, s, t):
     print(t_align)
 
     return score, s_matches, t_matches
+
+
+def dynprog_align(alphabet, scoring_matrix, s, t):
+
+    global ALPHABET, SCORING_MATRIX
+
+    ALPHABET = alphabet + "_"
+    SCORING_MATRIX = np.array(scoring_matrix)
+
+    D = build_score_matrix(s, t)
+
+    score = D[-1][-1]
+    s_align, t_align, s_matches, t_matches = traceback(D, s, t)
+
+    return s_align, t_align
 
 # s is the y-axis string
 def insert_gap_into_s(D, y, x, t):  # Conceptually L

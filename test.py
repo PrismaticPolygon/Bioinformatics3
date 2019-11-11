@@ -1,28 +1,28 @@
 from dynprog import dynprog
-from dynproglin import dynproglin
+from dynproglin import dynproglin, score
 
 # Duo
-# alphabet = "ABC"
-# scoring_matrix = [
-#     [1,-1,-2,-1],
-#     [-1,2,-4,-1],
-#     [-2,-4,3,-2],
-#     [-1,-1,-2,0]
-# ]
-# s = "ABCACA"
-# t = "BAACB"
-
-# test.py
 alphabet = "ABC"
 scoring_matrix = [
-    [1, -1, -2, -1],
-    [-1, 2, -4, -1],
-    [-2, -4, 3, -2],
-    [-1, -1, -2, 0]
+    [1,-1,-2,-1],
+    [-1,2,-4,-1],
+    [-2,-4,3,-2],
+    [-1,-1,-2,0]
 ]
+s = "ABCACA"
+t = "BAACBA"
 
-s = "AABBAACA"
-t = "CBACCCBA"
+# test.py
+# alphabet = "ABC"
+# scoring_matrix = [
+#     [1, -1, -2, -1],
+#     [-1, 2, -4, -1],
+#     [-2, -4, 3, -2],
+#     [-1, -1, -2, 0]
+# ]
+#
+# s = "AABBAACA"
+# t = "CBACCCBA"
 
 # Biorecipes
 # alphabet = "ACGT"
@@ -36,17 +36,20 @@ t = "CBACCCBA"
 # s = "CCTAAG"
 # t = "ACGGTAG"
 
-
+#
 print("***** DYNPROG *****\n")
-
+#
 a = dynprog(alphabet, scoring_matrix, s, t)
 
 print("Score:   ", a[0])
 print("Indices: ", a[1], a[2])
+print("")
 
-# print("\n**** DYNPROGLIN ****\n")
+print("**** DYNPROGLIN ****\n")
 
-# a = dynproglin(alphabet, scoring_matrix, sequence1, sequence2)
+a = dynproglin(alphabet, scoring_matrix, s, t)
 
-# print("Score:   ", a[0])
+print(a[0])
+print(a[1])
+print(score(a[0], a[1]))
 # print("Indices: ", a[1],a[2])

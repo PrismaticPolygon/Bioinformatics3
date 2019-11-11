@@ -1,5 +1,6 @@
 import numpy as np
 
+# http://biorecipes.com/DynProgBasic/code.html
 def dynprog(alphabet, scoring_matrix, s, t):
 
     global ALPHABET, SCORING_MATRIX
@@ -13,6 +14,7 @@ def dynprog(alphabet, scoring_matrix, s, t):
 
     return score, s_matches, t_matches, s_align, t_align
 
+#https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def dynproglin(alphabet, scoring_matrix, s, t):
 
     global ALPHABET, SCORING_MATRIX

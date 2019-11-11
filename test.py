@@ -1,5 +1,4 @@
-from dynprog import dynprog
-from dynproglin import dynproglin, score
+from main import dynprog, dynproglin, align_score
 
 # Duo
 alphabet = "ABC"
@@ -49,7 +48,6 @@ print("**** DYNPROGLIN ****\n")
 
 a = dynproglin(alphabet, scoring_matrix, s, t)
 
-print(a[0])
-print(a[1])
-print(score(a[0], a[1]))
-# print("Indices: ", a[1],a[2])
+print("Score:   ", a[0])
+print("Indices: ", a[1], a[2])
+print("")

@@ -124,8 +124,6 @@ def build_score_matrix(s, t, sublinear=False):
                 insert_gap_into_t(D, D_y, x, s, y)  # The cost of matching a gap in t with a character in s
             )
 
-        print(D[0])
-
         if sublinear and y < size_y - 1: # Copy the 1st row onto the second row unless it's the final iteration
 
             D[0] = D[1].copy()
@@ -214,16 +212,16 @@ def rev(l):
     return l[::-1]
 
 #
-# ALPHABET = "ABC_"
-# SCORING_MATRIX = np.array([
-#     [1, -1, -2, -1],
-#     [-1, 2, -4, -1],
-#     [-2, -4, 3, -2],
-#     [-1, -1, -2, 0]
-# ])
-# s = "AABBAACA"
-# t = "CBACCCBA"
-#
-# print(build_score_matrix(s, t))
-#
-# print(build_score_matrix(s, t, sublinear=True))
+ALPHABET = "ABC_"
+SCORING_MATRIX = np.array([
+    [1, -1, -2, -1],
+    [-1, 2, -4, -1],
+    [-2, -4, 3, -2],
+    [-1, -1, -2, 0]
+])
+s = "AABBAACA"
+t = "CBACCCBA"
+
+print(build_score_matrix(s, t))
+
+print(build_score_matrix(s, t, sublinear=True))

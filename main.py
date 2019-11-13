@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 
 # http://biorecipes.com/DynProgBasic/code.html
 def dynprog(alphabet, scoring_matrix, s, t):
@@ -14,17 +15,8 @@ def dynprog(alphabet, scoring_matrix, s, t):
 
     return score, s_matches, t_matches, s_align, t_align
 
-# Okay, we're in.
-# I need to figure out why dynproglin isn't working. Should be easy, right? No.
-# I suspect it's in the nuances of the algorithm itself.
-# If either equals 0, then there is no best local alignment.
-
-#https://en.wikipedia.org/wiki/Hirschberg's_algorithm
+# https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def dynproglin(alphabet, scoring_matrix, s, t):
-
-    # Snd there should never be any gaps matched with others gaps: it's always less than 0.
-    # That's not the issue, mind.
-    # If the length of either is 1.. that's fine. Provided the letter is in the other string, we can just return that.
 
     global ALPHABET, SCORING_MATRIX
 
@@ -78,6 +70,150 @@ def dynproglin(alphabet, scoring_matrix, s, t):
     # We're actually a row short.
 
     return score, s_matches, t_matches, s_align, t_align
+
+# file:///C:/Users/user/Documents/MEGA/University/Year%203/CCS/Bioinformatics/HeuristicAlign.pdf
+def heuralign(alphabet, scoring_matrix, s, t):
+
+    # s (database), |s| >> |t| is the y-axis
+    # t (query), is the x-axis
+
+    global SCORING_MATRIX, ALPHABET
+
+    SCORING_MATRIX = np.array(scoring_matrix)
+    ALPHABET = alphabet + "_"
+
+    ktup = 3
+    lookup = {"".join(i): [] for i in product(alphabet, repeat=ktup)}
+
+    for y in range(len(s) - ktup + 1):
+
+        word = s[y:y + ktup]
+        lookup[word].append(y)
+
+    print(lookup)
+
+    matches = []
+
+    for x in range(len(t) - ktup + 1):
+
+        word = t[x:x + ktup]
+
+        print(word)
+
+        for y in lookup[word]:
+
+            extended = extend(s, t, (x, y, ktup))
+
+            matches.append(extended)
+
+    print(matches)
+
+    diagonals = dict()
+    k = 9
+
+    for match in matches:
+
+        x, y, length = match
+
+        i = k * ((y - x) // k)
+
+        if i not in diagonals:
+
+            diagonals[i] = [match]
+
+        else:
+
+            diagonals[i].append(match)
+
+    for key, value in diagonals.items():
+
+        start_x = 0
+        start_y = 0
+        end_x_match = None
+        end_y_match = None
+
+        for match in value:
+
+            if match[0][0] < start_x:
+
+                start_x = match[0][0]
+
+            if match[1][1] < start_y:
+
+                start_y = match[1][1]
+
+            if end_y_match is None or match[1] + match[2] > end_y_match:
+
+                end_y_match = end_y_match
+
+            if end_x_match is None or match[0] + match[2] > end_x_match:
+
+                end_x_match = end_x_match
+
+        end_x = end_x_match[0] + end_x_match[2]
+        end_y = end_y_match[1] + end_y_match[2]
+
+        s = s[start_y:end_y]
+        t = t[start_x:end_x]
+
+        D = build_score_matrix_banded(s, t, k)
+
+        score, s_align, t_align, s_matches, t_matches = traceback(D, s, t)
+
+        return score, s_matches, t_matches, s_align, t_align
+
+
+
+def extend(s, t, match):
+
+    x, y, length = match
+
+    while x > 0 and y > 0:
+
+        if cost(t[x - 1], s[y - 1]) > 0:
+
+            x -= 1
+            y -= 1
+            length += 1
+
+        else:
+
+            break
+
+    while x + length + 1 < len(t) and y + length + 1 < len(s):
+
+        if cost(t[x + 1], s[y + 1]) > 0:
+
+            length += 1
+
+        else:
+
+            break
+
+    return x, y, length
+
+
+def build_score_matrix_banded(s, t, k):
+
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+    D = np.zeros((size_y, size_x), dtype="int8")
+    width = int(k / 2)
+
+    for y in range(size_y):
+
+        for x in range(y - width, y + width + 1):
+
+            if 0 <= x < size_x and y > 0:
+
+                D[y, x] = max(
+                    0,  # For local alignment
+                    match(D, y, x, s, y, t),  # The cost of matching two characters
+                    insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
+                    insert_gap_into_t(D, y, x, s, y)  # The cost of matching a gap in t with a character in s
+                )
+
+    return D
 
 def get_alignment_indices(s_align, t_align):
 
@@ -194,6 +330,9 @@ def traceback(D, s, t):
 def cost(c1, c2):
 
     global ALPHABET, SCORING_MATRIX
+
+    print(ALPHABET)
+    print(SCORING_MATRIX)
 
     return SCORING_MATRIX[ALPHABET.index(c1), ALPHABET.index(c2)]
 

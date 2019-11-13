@@ -13,7 +13,7 @@ import numpy as np
 # A heuristic procedure that runs in sub-quadratic time (similar to FASTA and BLAST)
 # Assessed on trade-offs between running time and quality of output.
 # A typical input will come with a planted alignment, which consists of segments of matches of different lengths
-# separated by random stuff
+# separated by random stuff.
 
 # BLAST: attempts to find a short fragment of a query sequence that aligns perfectly with a fragment
 # of a subject sequence in a database,
@@ -39,7 +39,7 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
 # MSP score can be calculated in O(n^2) using DP.
 
-# In searching a DB of thousands of sequences, generally only a handful will be homoglous.
+# In searching a DB of thousands of sequences, generally only a handful will be homogolous.
 # So we're interested only in those sequence entries with MSP scores about some threshold T.
 
 # Search a long sequence of all occurrences of certain short sequences

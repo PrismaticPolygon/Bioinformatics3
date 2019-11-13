@@ -1,6 +1,4 @@
-from main import dynprog, dynproglin
-from heuralign import heuralign
-
+from main import dynprog, dynproglin, heuralign
 
 tests = {
     "Duo": ("ABC", [
@@ -21,21 +19,24 @@ tests = {
             [1,-1,2,-1,-2],
             [-1,1,-1,2,-2],
             [-2,-2,-2,-2,0]],
-                   "CCTAAG", "ACGGTAG")
+                   "CCTAAG", "ACGGTAG"),
+    "fasta": ("ABC", [
+            [1, -1, -2, -1],
+            [-1, 2, -4, -1],
+            [-2, -4, 3, -2],
+            [-1, -1, -2, 0]],
+              "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC")
 }
 
-# Expected: 5 [3, 5, 6] [1, 2, 3]. Should be the same for both.
-
-functions = [dynprog, dynproglin]
-
-# Yeah, I don't trust that one bit.
-# It'll be very hard to pin down, though.
+functions = [heuralign]
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["test.py"])
+    a = function(*tests["Duo"])
+
+    print(a)
 
     print(a[3])
     print(a[4])

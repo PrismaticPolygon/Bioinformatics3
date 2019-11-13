@@ -24,13 +24,18 @@ tests = {
                    "CCTAAG", "ACGGTAG")
 }
 
-functions = [dynprog, dynproglin, heuralign]
+# Expected: 5 [3, 5, 6] [1, 2, 3]. Should be the same for both.
+
+functions = [dynprog, dynproglin]
+
+# Yeah, I don't trust that one bit.
+# It'll be very hard to pin down, though.
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["Duo"])
+    a = function(*tests["test.py"])
 
     print(a[3])
     print(a[4])

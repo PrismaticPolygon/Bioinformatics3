@@ -212,16 +212,16 @@ def rev(l):
     return l[::-1]
 
 #
-ALPHABET = "ABC_"
-SCORING_MATRIX = np.array([
-    [1, -1, -2, -1],
-    [-1, 2, -4, -1],
-    [-2, -4, 3, -2],
-    [-1, -1, -2, 0]
-])
-s = "AABBAACA"
-t = "CBACCCBA"
-
-print(build_score_matrix(s, t))
-
-print(build_score_matrix(s, t, sublinear=True))
+# ALPHABET = "ABC_"
+# SCORING_MATRIX = np.array([
+#     [1, -1, -2, -1],
+#     [-1, 2, -4, -1],
+#     [-2, -4, 3, -2],
+#     [-1, -1, -2, 0]
+# ])
+# s = "AABBAACA"
+# t = "CBACCCBA"
+#
+# print(build_score_matrix(s, t))
+#
+# print(build_score_matrix(s, t, sublinear=True))

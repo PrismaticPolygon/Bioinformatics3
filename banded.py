@@ -50,32 +50,44 @@ def align(s, t, matches, k):
     return 0, 0
 
 
-def build_score_matrix(s, t, sublinear=False):
+def build_score_matrix(s, t, k):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
-    shape = (2, size_x) if sublinear else (size_y, size_x)
-    D = np.zeros(shape, dtype="int8")
+    D = np.zeros((size_y, size_x), dtype="int8")
+    width = int(k / 2)
 
-    for y in range(1, size_y):  # y
+    print(k)
+    print(width)
+    print(D.shape)
 
-        D_y = 1 if sublinear else y
+    for y in range(size_y):
 
-        for x in range(1, size_x):
+        for x in range(y - width, y + width + 1):
 
-            D[D_y, x] = max(
-                0,  # For local alignment
-                match(D, D_y, x, s, y, t),  # The cost of matching two characters
-                insert_gap_into_s(D, D_y, x, t),  # The cost of matching a gap in s with a character in t
-                insert_gap_into_t(D, D_y, x, s, y)  # The cost of matching a gap in t with a character in s
-            )
+            if 0 <= x < size_x and y > 0:
 
-        if sublinear and y < size_y - 1: # Copy the 1st row onto the second row unless it's the final iteration
+                D[y, x] = max(
+                    0,  # For local alignment
+                    match(D, y, x, s, y, t),  # The cost of matching two characters
+                    insert_gap_into_s(D, y, x, t),  # The cost of matching a gap in s with a character in t
+                    insert_gap_into_t(D, y, x, s, y)  # The cost of matching a gap in t with a character in s
+                )
 
-            D[0] = D[1].copy()
-            D[1] = 0
+    return D
 
-    return D[1] if sublinear else D
+
+def match(D, D_y, x, s, s_y, t):   # Conceptually D
+
+    return D[D_y - 1][x - 1] + cost(s[s_y - 1], t[x - 1])
+
+def insert_gap_into_s(D, D_y, x, t):  # s is the y-axis string: conceptually L
+
+    return D[D_y][x - 1] + cost(t[x - 1], "_")
+
+def insert_gap_into_t(D, D_y, x, s, s_y):  # t is the x-axis string: conceptually U
+
+    return D[D_y - 1][x] + cost(s[s_y - 1], "_")
 
 
 def banded(s, t, matches):
@@ -102,7 +114,41 @@ def banded(s, t, matches):
 
     for key, value in diagonals.items():
 
-        s_align, t_align = align(s, t, value, k)
+        print(value)
+
+        start_x = min(value, key=lambda m:m[0])[0]
+        start_y = min(value, key=lambda m:m[1])[1]
+        end_x_match = max(value, key=lambda m:m[0] + m[2])
+        end_y_match = max(value, key=lambda m:m[1] + m[2])
+
+        end_x = end_x_match[0] + end_x_match[2]
+        end_y = end_y_match[1] + end_y_match[2]
+
+        print(start_x, start_y, end_x, end_y)
+
+        print(s, t)
+
+        s = s[start_y:end_y]
+        t = t[start_x:end_x]
+
+        D = build_score_matrix(s, t, k)
+
+        score, s_align, t_align, s_matches, t_matches = traceback(D, s, t)
+
+        print(score, t_align, s_align, s_matches, t_matches)
+
+
+
+        # print(D)
+
+        # Now we do it here. Right? Right?
+        # Please? Please god.
+
+        # Fuck it. I'll go home and talk to Charlie about it.
+
+
+
+        # It's probably slower, lol.
 
         break
 
@@ -268,7 +314,60 @@ def fasta(s, t, ktup):
 
 def cost(c1, c2):
 
+    global alphabet
+
+    alphabet += "_"
+
     return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
+
+def traceback(D, s, t):
+
+    score = np.amax(D)
+    y, x = np.unravel_index(D.argmax(), D.shape)
+
+    # We don't need the traceback, right?
+
+    s_align, t_align = "", ""
+    s_matches = []
+    t_matches = []
+
+    while y != 0 or x != 0:
+
+        current = D[y][x]
+
+        if current == 0:  # The end of the best local alignment
+
+            return score, s_align, t_align, s_matches[::-1], t_matches[::-1]
+
+        elif current == match(D, y, x, s, y, t): # D
+
+            x -= 1
+            y -= 1
+            s_align = s[y] + s_align
+            t_align = t[x] + t_align
+
+            s_matches.append(y)
+            t_matches.append(x)
+
+        elif current == insert_gap_into_s(D, y, x, t):  # L
+
+            x -= 1
+            s_align = "_" + s_align
+            t_align = t[x] + t_align
+
+
+        elif current == insert_gap_into_t(D, y, x, s, y):  # U
+
+            y -= 1
+            s_align = s[y] + s_align
+            t_align = "_" + t_align
+
+        else:
+
+            raise ValueError("Something's fucked!")
+
+    return score, s_align, t_align, s_matches[::-1], t_matches[::-1]
+
 
 alphabet = "ABC"
 

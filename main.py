@@ -67,7 +67,7 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
     alphabet += "_"
     scoring_matrix = np.array(scoring_matrix)
-    ktup = 3
+    ktup = 4
     k = 9
 
     lookup = build_lookup(alphabet, s, ktup)    # Build lookup table of database string s

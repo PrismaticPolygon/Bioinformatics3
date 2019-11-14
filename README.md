@@ -1,23 +1,28 @@
-# Functions
-* Basic DP (quadratic time and space) [50]
-* DP (linear space) [15]
-* Heuristic (sub-quadratic) [20]
+# Bioinformatics
 
+Implement different algorithms for local alignment.
 
-Should be called dynprog, dynproglin, and heuralign.
-Signature should be: (alphabet, scoring_matrix, sequence1, sequence2)
+## Part 1
 
-Return should be a list of the score of the best local alignment plus two lists
-of indices, one for each sequence, that realises this score. 
+> Basic dynamic programming that runs in quadratic time and space [50 marks]
 
-Marked automatically. 
+Implemented Smith-Waterman based off the Needleman-Wunsch algorithm described 
+[here](http://biorecipes.com/DynProgBasic/code.html). Quadratic time and space.
 
-BLAST is mostly involved in finding ungapped, locally optimal sequence alignments
+> Dynamic programming that runs in linear space [15 marks]
 
-### BLAST
-* True match alignments are likely to contain somewhere within them a short stretch of identities
-(very high scoring matches)
-* These can be used as 'seeds' from which to extend out in seach for longer alignments
-* By keeping seed sequences short, the query sequence can be pre-processed and a table of all possible seeds
-generated
+Implemented Hirschberg, described [here](https://en.wikipedia.org/wiki/Hirschberg's_algorithm).
+Quadratic time, linear space. However, this is a *global* alignment algorithm. Very few
+linear local alignment algorithms exist; two options are:
+* A new algorithm for best subsequence alignments with application to tRNA-rRNA comparisons (Waterman and Eggert, 1987)
+ (available [here](https://www.sciencedirect.com/science/article/pii/0022283687904785)).
+* Huang and Miller (1991) (available [here](https://www.sciencedirect.com/science/article/pii/019688589190017D)).
 
+> A heuristic procedure that runs in sub-quadratic time (similar to FASTA and BLAST) [20 marks] 
+
+Implemented a simple variant of [FASTA](https://en.wikipedia.org/wiki/FASTA), with `ktup = 4`.
+
+## Part 2
+
+> Design your own substitution-cost function that operates on pairs of sequences of letters instead of on pairs of 
+letters. Clearly describe it on at most one page. [15 marks]

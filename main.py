@@ -1,19 +1,17 @@
 import numpy as np
 from itertools import product
 
+# Maybe we don't need it global.
+
 # http://biorecipes.com/DynProgBasic/code.html
 def dynprog(alphabet, scoring_matrix, s, t):
 
-    global ALPHABET, SCORING_MATRIX
+    alphabet = alphabet + "_"
+    scoring_matrix = np.array(scoring_matrix)
 
-    ALPHABET = alphabet + "_"
-    SCORING_MATRIX = np.array(scoring_matrix)
+    D = needleman_wunsch(alphabet, scoring_matrix, s, t)
 
-    D = build_score_matrix(s, t)
-
-    score, s_align, t_align, s_matches, t_matches = traceback(D, s, t)
-
-    return score, s_matches, t_matches, s_align, t_align
+    return traceback(alphabet, scoring_matrix, s, t, D)
 
 # https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def dynproglin(alphabet, scoring_matrix, s, t):
@@ -41,8 +39,8 @@ def dynproglin(alphabet, scoring_matrix, s, t):
         else:
 
             s_mid = int(len(s) / 2)
-            score_l = build_score_matrix(s[:s_mid], t, sublinear=True)
-            score_r = build_score_matrix(rev(s[s_mid:]), rev(t), sublinear=True)
+            score_l = needleman_wunsch(s[:s_mid], t, sublinear=True)
+            score_r = needleman_wunsch(rev(s[s_mid:]), rev(t), sublinear=True)
             t_mid = np.argmax(score_l + rev(score_r))
 
             z_l, w_l = recurse(s[:s_mid], t[:t_mid])
@@ -156,7 +154,7 @@ def heuralign(alphabet, scoring_matrix, s, t):
         s = s[start_y:end_y]
         t = t[start_x:end_x]
 
-        D = build_score_matrix_banded(s, t, k)
+        D = fasta(s, t, k)
 
         score, s_align, t_align, s_matches, t_matches = traceback(D, s, t)
 
@@ -193,7 +191,7 @@ def extend(s, t, match):
     return x, y, length
 
 
-def build_score_matrix_banded(s, t, k):
+def fasta(alphabet, scoring_matrix, s, t, k):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
@@ -240,16 +238,16 @@ def get_alignment_indices(s_align, t_align):
 
     return s_matches, t_matches
 
-def build_score_matrix(s, t, sublinear=False):
+
+def hirschberg(alphabet, scoring_matrix, s, t):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
-    shape = (2, size_x) if sublinear else (size_y, size_x)
-    D = np.zeros(shape, dtype="int8")
+    D = np.zeros((2, size_x), dtype="int8")
 
     for y in range(1, size_y):  # y
 
-        D_y = 1 if sublinear else y
+        D_y = 1
 
         for x in range(1, size_x):
 
@@ -260,12 +258,33 @@ def build_score_matrix(s, t, sublinear=False):
                 insert_gap_into_t(D, D_y, x, s, y)  # The cost of matching a gap in t with a character in s
             )
 
-        if sublinear and y < size_y - 1: # Copy the 1st row onto the second row unless it's the final iteration
+        if y < size_y - 1: # Copy the 1st row onto the second row unless it's the final iteration
 
             D[0] = D[1].copy()
             D[1] = 0
 
-    return D[1] if sublinear else D
+    return D[1]
+
+
+
+def needleman_wunsch(alphabet, scoring_matrix, s, t):
+
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+    D = np.zeros((size_y, size_x), dtype="int8")
+
+    for y in range(1, size_y):  # y
+
+        for x in range(1, size_x):
+
+            D[y, x] = max(
+                0,  # For local alignment
+                D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]), # Cost of matching two characters
+                D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"),  # The cost of matching a gap in s with a character in t
+                D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"),   # The cost of matching a gap in t with a character in s
+            )
+
+    return D
 
 def match(D, D_y, x, s, s_y, t):   # Conceptually D
 
@@ -279,16 +298,13 @@ def insert_gap_into_t(D, D_y, x, s, s_y):  # t is the x-axis string: conceptuall
 
     return D[D_y - 1][x] + cost(s[s_y - 1], "_")
 
-def traceback(D, s, t):
+def traceback(alphabet, scoring_matrix, s, t, D):
 
     score = np.amax(D)
     y, x = np.unravel_index(D.argmax(), D.shape)
 
-    # We don't need the traceback, right?
-
     s_align, t_align = "", ""
-    s_matches = []
-    t_matches = []
+    s_matches, t_matches = [], []
 
     while y != 0 or x != 0:
 
@@ -296,9 +312,9 @@ def traceback(D, s, t):
 
         if current == 0:  # The end of the best local alignment
 
-            return score, s_align, t_align, s_matches[::-1], t_matches[::-1]
+            break
 
-        elif current == match(D, y, x, s, y, t): # D
+        elif current == D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]): # Match (D)
 
             x -= 1
             y -= 1
@@ -308,14 +324,13 @@ def traceback(D, s, t):
             s_matches.append(y)
             t_matches.append(x)
 
-        elif current == insert_gap_into_s(D, y, x, t):  # L
+        elif current == D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"):  # Matching a gap in s with a character in t (L)
 
             x -= 1
             s_align = "_" + s_align
             t_align = t[x] + t_align
 
-
-        elif current == insert_gap_into_t(D, y, x, s, y):  # U
+        elif current == D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"):  # Matching a gap in t with a character in s (U)
 
             y -= 1
             s_align = s[y] + s_align
@@ -325,16 +340,22 @@ def traceback(D, s, t):
 
             raise ValueError("Something's fucked!")
 
-    return score, s_align, t_align, s_matches[::-1], t_matches[::-1]
+    return score, s_matches[::-1], t_matches[::-1], s_align, t_align
 
-def cost(c1, c2):
 
-    global ALPHABET, SCORING_MATRIX
 
-    print(ALPHABET)
-    print(SCORING_MATRIX)
 
-    return SCORING_MATRIX[ALPHABET.index(c1), ALPHABET.index(c2)]
+
+
+
+
+
+
+
+
+def cost(alphabet, scoring_matrix, c1, c2):
+
+    return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
 
 def align_score(s_align, t_align):
 

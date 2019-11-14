@@ -28,13 +28,13 @@ tests = {
               "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC")
 }
 
-functions = [heuralign]
+functions = [dynprog]
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["Duo"])
+    a = function(*tests["test.py"])
 
     print(a)
 

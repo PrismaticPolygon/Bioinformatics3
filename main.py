@@ -9,7 +9,7 @@ def dynprog(alphabet, scoring_matrix, s, t):
     alphabet += "_"
     scoring_matrix = np.array(scoring_matrix)
 
-    D = needleman_wunsch(alphabet, scoring_matrix, s, t)
+    D = smith_waterman(alphabet, scoring_matrix, s, t)
 
     return traceback(alphabet, scoring_matrix, s, t, D)
 
@@ -38,20 +38,25 @@ def dynproglin(alphabet, scoring_matrix, s, t):
             score_r = hirschberg(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t))
             t_mid = np.argmax(score_l + rev(score_r))
 
-            z_l, w_l = recurse(s[:s_mid], t[:t_mid])
-            z_r, w_r = recurse(s[s_mid:], t[t_mid:])
+            left = recurse(s[:s_mid], t[:t_mid])
+            right = recurse(s[s_mid:], t[t_mid:])
 
-            s_align = z_l + z_r
-            t_align = w_l + w_r
+            s_align = left[0] + right[0]
+            t_align = left[1] + right[1]
 
         return s_align, t_align
 
+    # Save node i - j as part of the solution.
+
     s_align, t_align = recurse(s, t)
+
+    # Should we be able to calculate it here?
+    # I feel like yes.
 
     # Hm. I'm trying to avoid having those auxiliary alignment methods.
     # But I don't understand how well enough how it works, lmao.
 
-    score = align_score(s_align, t_align)
+    score = align_score(alphabet, scoring_matrix, s_align, t_align)
     s_matches, t_matches = get_alignment_indices(s_align, t_align)
 
     return score, s_matches, t_matches, s_align, t_align
@@ -178,9 +183,10 @@ def extend(s, t, match):
     return x, y, length
 
 
+# I'm looking for a linear local alignment algorithm.
+# Don't care about efficiency.
 
-
-def needleman_wunsch(alphabet, scoring_matrix, s, t):
+def smith_waterman(alphabet, scoring_matrix, s, t):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
@@ -238,24 +244,9 @@ def hirschberg(alphabet, scoring_matrix, s, t):
                 D[0][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
             )
 
-        if y < size_y - 1: # Copy the 1st row onto the second row unless it's the final iteration
-
-            D[0] = D[1].copy()
-            D[1] = 0
+        D[0] = D[1].copy()
 
     return D[1]
-
-def match(D, D_y, x, s, s_y, t):   # Conceptually D
-
-    return D[D_y - 1][x - 1] + cost(s[s_y - 1], t[x - 1])
-
-def insert_gap_into_s(D, D_y, x, t):  # s is the y-axis string: conceptually L
-
-    return D[D_y][x - 1] + cost(t[x - 1], "_")
-
-def insert_gap_into_t(D, D_y, x, s, s_y):  # t is the x-axis string: conceptually U
-
-    return D[D_y - 1][x] + cost(s[s_y - 1], "_")
 
 
 def traceback(alphabet, scoring_matrix, s, t, D):
@@ -278,6 +269,7 @@ def traceback(alphabet, scoring_matrix, s, t, D):
 
             x -= 1
             y -= 1
+
             s_align = s[y] + s_align
             t_align = t[x] + t_align
 
@@ -332,19 +324,22 @@ def get_alignment_indices(s_align, t_align):
 
 
 
-def cost(alphabet, scoring_matrix, c1, c2):
-
-    return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
-
-def align_score(s_align, t_align):
+def align_score(alphabet, scoring_matrix, s_align, t_align):
 
     score = 0
 
     for i in range(len(s_align)):
 
-        score += cost(s_align[i], t_align[i])
+        score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
 
     return score
+
+
+
+
+def cost(alphabet, scoring_matrix, c1, c2):
+
+    return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
 
 def rev(l):
 

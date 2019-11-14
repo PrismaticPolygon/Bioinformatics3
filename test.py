@@ -28,7 +28,7 @@ tests = {
               "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC")
 }
 
-functions = [dynprog]
+functions = [dynproglin]
 
 for function in functions:
 

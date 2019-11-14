@@ -4,10 +4,10 @@
 * Heuristic (sub-quadratic) [20]
 
 
-Should be called dynprog, dynproglin, and heuralign
+Should be called dynprog, dynproglin, and heuralign.
 Signature should be: (alphabet, scoring_matrix, sequence1, sequence2)
 
-Return should be a list of the score of the bst local alignment plus two lists
+Return should be a list of the score of the best local alignment plus two lists
 of indices, one for each sequence, that realises this score. 
 
 Marked automatically. 

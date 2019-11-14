@@ -1,8 +1,6 @@
 import numpy as np
 from itertools import product
 
-# Maybe we don't need it global.
-
 # http://biorecipes.com/DynProgBasic/code.html
 def dynprog(alphabet, scoring_matrix, s, t):
 
@@ -67,12 +65,48 @@ def heuralign(alphabet, scoring_matrix, s, t):
     # s (database), |s| >> |t| is the y-axis
     # t (query), is the x-axis
 
-    global SCORING_MATRIX, ALPHABET
-
-    SCORING_MATRIX = np.array(scoring_matrix)
-    ALPHABET = alphabet + "_"
-
+    alphabet += "_"
+    scoring_matrix = np.array(scoring_matrix)
     ktup = 3
+    k = 9
+
+    lookup = build_lookup(alphabet, s, ktup)    # Build lookup table of database string s
+    matches = build_matches(alphabet, scoring_matrix, s, t, ktup, lookup)   # Build list of extended alignments from query string t
+    diagonals = build_diagonals(k, matches) # Sort into diagonals.
+
+    for key, matches in diagonals.items():
+
+        start_x, start_y = len(t) - 1, len(s) - 1
+        end_x, end_y = 0, 0
+
+        for x, y, length in matches:
+
+            if x < start_x:
+
+                start_x = x
+
+            if x + length > end_x:
+
+                end_x = x + length
+
+            if y < start_y:
+
+                start_y = y
+
+            if y + length > end_y:
+
+                end_y = y + length
+
+        s = s[start_y:end_y]
+        t = t[start_x:end_x]
+
+        D = banded(alphabet, scoring_matrix, s, t, k)
+
+        return traceback(alphabet, scoring_matrix, s, t, D)
+
+
+def build_lookup(alphabet, s, ktup):
+
     lookup = {"".join(i): [] for i in product(alphabet, repeat=ktup)}
 
     for y in range(len(s) - ktup + 1):
@@ -80,7 +114,9 @@ def heuralign(alphabet, scoring_matrix, s, t):
         word = s[y:y + ktup]
         lookup[word].append(y)
 
-    print(lookup)
+    return lookup
+
+def build_matches(alphabet, scoring_matrix, s, t, ktup, lookup):
 
     matches = []
 
@@ -88,18 +124,43 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
         word = t[x:x + ktup]
 
-        print(word)
-
         for y in lookup[word]:
 
-            extended = extend(s, t, (x, y, ktup))
+            extended = extend(alphabet, scoring_matrix, s, t, x, y, ktup)
 
             matches.append(extended)
 
-    print(matches)
+    return matches
+
+def extend(alphabet, scoring_matrix, s, t, x, y, length):
+
+    up, down = True, True
+
+    while up or down:
+
+        if x == 0 or y == 0 or cost(alphabet, scoring_matrix, t[x - 1], s[y - 1]) < 0:
+
+            up = False
+
+        else:
+
+            x -= 1
+            y -= 1
+            length += 1
+
+        if x + length == len(t) - 1 or y + length == len(s) - 1 or cost(alphabet, scoring_matrix, t[x + 1], s[y + 1]) < 0:
+
+            down = False
+
+        else:
+
+            length += 1
+
+    return x, y, length
+
+def build_diagonals(k, matches):
 
     diagonals = dict()
-    k = 9
 
     for match in matches:
 
@@ -115,76 +176,7 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
             diagonals[i].append(match)
 
-    for key, value in diagonals.items():
-
-        start_x = 0
-        start_y = 0
-        end_x_match = None
-        end_y_match = None
-
-        for match in value:
-
-            if match[0][0] < start_x:
-
-                start_x = match[0][0]
-
-            if match[1][1] < start_y:
-
-                start_y = match[1][1]
-
-            if end_y_match is None or match[1] + match[2] > end_y_match:
-
-                end_y_match = end_y_match
-
-            if end_x_match is None or match[0] + match[2] > end_x_match:
-
-                end_x_match = end_x_match
-
-        end_x = end_x_match[0] + end_x_match[2]
-        end_y = end_y_match[1] + end_y_match[2]
-
-        s = s[start_y:end_y]
-        t = t[start_x:end_x]
-
-        D = fasta(s, t, k)
-
-        score, s_align, t_align, s_matches, t_matches = traceback(D, s, t)
-
-        return score, s_matches, t_matches, s_align, t_align
-
-
-
-def extend(s, t, match):
-
-    x, y, length = match
-
-    while x > 0 and y > 0:
-
-        if cost(t[x - 1], s[y - 1]) > 0:
-
-            x -= 1
-            y -= 1
-            length += 1
-
-        else:
-
-            break
-
-    while x + length + 1 < len(t) and y + length + 1 < len(s):
-
-        if cost(t[x + 1], s[y + 1]) > 0:
-
-            length += 1
-
-        else:
-
-            break
-
-    return x, y, length
-
-
-# I'm looking for a linear local alignment algorithm.
-# Don't care about efficiency.
+    return diagonals
 
 def smith_waterman(alphabet, scoring_matrix, s, t):
 
@@ -202,28 +194,6 @@ def smith_waterman(alphabet, scoring_matrix, s, t):
                 D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"),  # The cost of matching a gap in s with a character in t
                 D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"),   # The cost of matching a gap in t with a character in s
             )
-
-    return D
-
-def fasta(alphabet, scoring_matrix, s, t, k):
-
-    size_y = len(s) + 1  # y-axis
-    size_x = len(t) + 1  # x-axis
-    D = np.zeros((size_y, size_x), dtype="int8")
-    width = int(k / 2)
-
-    for y in range(size_y):
-
-        for x in range(y - width, y + width + 1):
-
-            if 0 <= x < size_x and y > 0:
-
-                D[y, x] = max(
-                    0,  # For local alignment
-                    D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]), # Cost of matching two characters
-                    D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"), # The cost of matching a gap in s with a character in t
-                    D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
-                )
 
     return D
 
@@ -248,6 +218,27 @@ def hirschberg(alphabet, scoring_matrix, s, t):
 
     return D[1]
 
+def banded(alphabet, scoring_matrix, s, t, k):
+
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+    D = np.zeros((size_y, size_x), dtype="int8")
+    width = int(k / 2)
+
+    for y in range(size_y):
+
+        for x in range(y - width, y + width + 1):
+
+            if 0 <= x < size_x and y > 0:
+
+                D[y, x] = max(
+                    0,  # For local alignment
+                    D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]), # Cost of matching two characters
+                    D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"), # The cost of matching a gap in s with a character in t
+                    D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
+                )
+
+    return D
 
 def traceback(alphabet, scoring_matrix, s, t, D):
 
@@ -294,9 +285,6 @@ def traceback(alphabet, scoring_matrix, s, t, D):
 
     return score, s_matches[::-1], t_matches[::-1], s_align, t_align
 
-
-
-
 def get_alignment_indices(s_align, t_align):
 
     s_matches, t_matches = [], []
@@ -323,7 +311,6 @@ def get_alignment_indices(s_align, t_align):
     return s_matches, t_matches
 
 
-
 def align_score(alphabet, scoring_matrix, s_align, t_align):
 
     score = 0
@@ -333,9 +320,6 @@ def align_score(alphabet, scoring_matrix, s_align, t_align):
         score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
 
     return score
-
-
-
 
 def cost(alphabet, scoring_matrix, c1, c2):
 

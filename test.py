@@ -28,15 +28,13 @@ tests = {
               "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC")
 }
 
-functions = [dynproglin]
+functions = [dynprog, heuralign]
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["test.py"])
-
-    print(a)
+    a = function(*tests["fasta"])
 
     print(a[3])
     print(a[4])

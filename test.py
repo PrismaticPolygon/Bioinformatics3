@@ -25,16 +25,38 @@ tests = {
             [-1, 2, -4, -1],
             [-2, -4, 3, -2],
             [-1, -1, -2, 0]],
-              "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC")
+              "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC"),
+    "heuristic1": ("ABCD", [
+            [ 1,-5,-5,-5,-1],
+            [-5, 1,-5,-5,-1],
+            [-5,-5, 5,-5,-4],
+            [-5,-5,-5, 6,-4],
+            [-1,-1,-4,-4,-9]],
+                   "AAAAACCDDCCDDAAAAACC", "CCAAADDAAAACCAAADDCCAAAA"),
+    "heuristic2": ("ABCD", [
+            [ 1,-5,-5,-5,-1],
+            [-5, 1,-5,-5,-1],
+            [-5,-5, 5,-5,-4],
+            [-5,-5,-5, 6,-4],
+            [-1,-1,-4,-4,-9]],
+                   "AACAAADAAAACAADAADAAA", "CDCDDD"),
+    "heuristic3": ("ABCD", [
+            [ 1,-5,-5,-5,-1],
+            [-5, 1,-5,-5,-1],
+            [-5,-5, 5,-5,-4],
+            [-5,-5,-5, 6,-4],
+            [-1,-1,-4,-4,-9]],
+                   "DDCDDCCCDCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCDDDCDADCDCDCDCD",
+                   "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD")
 }
 
-functions = [dynprog, heuralign]
+functions = [dynprog]
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["fasta"])
+    a = function(*tests["test.py"])
 
     print(a[3])
     print(a[4])

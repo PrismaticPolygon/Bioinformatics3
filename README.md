@@ -18,6 +18,9 @@ linear local alignment algorithms exist; two options are:
  (available [here](https://www.sciencedirect.com/science/article/pii/0022283687904785)).
 * Huang and Miller (1991) (available [here](https://www.sciencedirect.com/science/article/pii/019688589190017D)).
 
+Rumour has it
+
+
 > A heuristic procedure that runs in sub-quadratic time (similar to FASTA and BLAST) [20 marks] 
 
 Implemented a simple variant of [FASTA](https://en.wikipedia.org/wiki/FASTA), with `ktup = 4`.

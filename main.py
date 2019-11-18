@@ -7,9 +7,9 @@ def dynprog(alphabet, scoring_matrix, s, t):
     alphabet = alphabet if alphabet[-1] == "_" else alphabet + "_"
     scoring_matrix = np.array(scoring_matrix)
 
-    D, max_i = score_matrix(alphabet, scoring_matrix, s, t, local=False)
+    D, max_i = score_matrix(alphabet, scoring_matrix, s, t)
 
-    return traceback(alphabet, scoring_matrix, s, t, D, local=False)
+    return traceback(alphabet, scoring_matrix, s, t, D)
 
 # https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def dynproglin(alphabet, scoring_matrix, s, t):
@@ -17,54 +17,38 @@ def dynproglin(alphabet, scoring_matrix, s, t):
     alphabet += "_"
     scoring_matrix = np.array(scoring_matrix)
 
+    print(s, t)
+
+    _, (end_y, end_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
+
+    print(end_y, end_x)
+
+    s = s[:end_y]
+    t = t[:end_x]
+
+    print(s, t)
+
+    s = rev(s)
+    t = rev(t)
+
+    print(s, t)
+
+    _, (start_y, start_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
+
+    print(start_y, start_x)
+
+    s = rev(s[:start_y])
+    t = rev(t[:start_x])
+
+    print(s, t)
+
     s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
     score = align_score(alphabet, scoring_matrix, s_align, t_align)
+
     s_matches, t_matches = get_alignment_indices(s_align, t_align)
 
-    #
-    #
-    # print(s, t)
-    #
-    # _, max_score, (end_y, end_x) = sub_quadratic(alphabet, scoring_matrix, s, t)
-    #
-    # print(max_score, end_y, end_x)
-    #
-    # s = s[:end_y]
-    # t = t[:end_x]
-    #
-    # print(s, t)
-
-    # Do we definitely reverse it?
-    # It makes sense that we would...
-    # Fortunately, I had Hirschberg working. I'm not convinced that it IS cubic time. Either way, at least it works.
-    # That's definitely cheating.
-    #
-    # s = rev(s)
-    # t = rev(t)
-    #
-    # print(s, t)
-    #
-    # _, max_score, (start_y, start_x) = sub_quadratic(alphabet, scoring_matrix, s, t)
-
-    # Nope. Ugh.
-
-    # print(max_score, start_y, start_x)
-    #
-    # s = rev(s[:start_y])
-    # t = rev(t[:end_y])
-    #
-    # print(s, t)
-    #
-    # s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
-    # score = align_score(alphabet, scoring_matrix, s_align, t_align)
-    # s_matches, t_matches = get_alignment_indices(s_align, t_align)
-
-    # Besides: Hirschberg is still failing. There are no quick fixes.
-
-    # Also, those indices are hella wrong.
-    # Because I designed the method for global alignment, not local.
-
-    # return 0, [0], [0], s_align, t_align
+    s_matches += end_y - start_y
+    t_matches += end_x - start_x
 
     return score, s_matches, t_matches, s_align, t_align
 
@@ -247,7 +231,8 @@ def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
 
     D = np.zeros(shape, dtype="int16")
 
-    max_i = (0, 0)
+    max_i = None
+    max_score = None
 
     for y in range(size_y):  # y
 
@@ -277,6 +262,11 @@ def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
 
                 D[D_y, x] = 0 if (local and D[D_y, x] < 0) else D[D_y, x]
 
+                if max_i is None or D[D_y, x] > max_score:
+
+                    max_i = y, x
+                    max_score = D[D_y, x]
+
         if y > 0 and sublinear:
 
             D[0] = D[1].copy()
@@ -305,7 +295,7 @@ def banded(alphabet, scoring_matrix, s, t, k):
 
     return D
 
-def traceback(alphabet, scoring_matrix, s, t, D, local=False):
+def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
     score = np.amax(D) if local else D[-1][-1]
     y, x = np.unravel_index(D.argmax(), D.shape) if local else (len(s), len(t))
@@ -348,9 +338,11 @@ def traceback(alphabet, scoring_matrix, s, t, D, local=False):
 
             raise ValueError("Something's fucked!")
 
-    return score, s_matches[::-1], t_matches[::-1], s_align, t_align
+    return score, np.array(rev(s_matches)), np.array(rev(t_matches)), s_align, t_align
 
 def get_alignment_indices(s_align, t_align):
+
+    assert(len(s_align) == len(t_align))
 
     s_matches, t_matches = [], []
     s_point, t_point = 0, 0
@@ -373,9 +365,11 @@ def get_alignment_indices(s_align, t_align):
 
             t_point += 1
 
-    return s_matches, t_matches
+    return np.array(s_matches), np.array(t_matches)
 
 def align_score(alphabet, scoring_matrix, s_align, t_align):
+
+    assert(len(s_align) == len(t_align))
 
     score = 0
 

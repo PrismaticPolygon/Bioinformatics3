@@ -11,36 +11,43 @@ def dynprog(alphabet, scoring_matrix, s, t):
 
     return traceback(alphabet, scoring_matrix, s, t, D)
 
-# https://en.wikipedia.org/wiki/Hirschberg's_algorithm
+# Smith Waterman is used for local
+# Needleman-Wunsch is used for global
+
 def dynproglin(alphabet, scoring_matrix, s, t):
 
     alphabet += "_"
     scoring_matrix = np.array(scoring_matrix)
 
-    print(s, t)
+    # Get max index from forwards pass
+    # Get min index from backwards pass.
+    # He literally just reverses, it, mind you.
+    # Is that the right thing to do? I'm not sure.
+
+    # print(s, t)
 
     _, (end_y, end_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
 
-    print(end_y, end_x)
+    # print(end_y, end_x)
 
     s = s[:end_y]
     t = t[:end_x]
-
-    print(s, t)
+    #
+    # print(s, t)
 
     s = rev(s)
     t = rev(t)
 
-    print(s, t)
+    # print(s, t)
 
     _, (start_y, start_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
 
-    print(start_y, start_x)
+    # print(start_y, start_x)
 
     s = rev(s[:start_y])
     t = rev(t[:start_x])
 
-    print(s, t)
+    # print(s, t)
 
     s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
     score = align_score(alphabet, scoring_matrix, s_align, t_align)
@@ -100,10 +107,11 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
         return traceback(alphabet, scoring_matrix, s, t, D)
 
-
+# https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def hirschberg(alphabet, scoring_matrix, s, t):
 
     s_align, t_align = "", ""
+    # We can calculate the score in here, it seems. Not very well, mind you: I'd rather not risk breaking anything.
 
     if len(s) == 0:
 
@@ -125,20 +133,20 @@ def hirschberg(alphabet, scoring_matrix, s, t):
 
     else:
 
-        s_mid = int(len(s) / 2)
+        s_mid = len(s) // 2
         score_l, _ = score_matrix(alphabet, scoring_matrix, s[:s_mid], t, local=False, sublinear=True)
 
-        print("Score_l: ", score_l)
+        # print("Score_l: ", score_l)
 
         score_r, _ = score_matrix(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t), local=False, sublinear=True)
 
-        print("Score_r", score_r)
+        # print("Score_r", score_r)
 
         # Truth value of an array is ambigous
 
         t_mid = np.argmax(score_l + rev(score_r))
 
-        print("t_mid", t_mid)
+        # print("t_mid", t_mid)
 
         z_l, w_l = hirschberg(alphabet, scoring_matrix, s[:s_mid], t[:t_mid])
         z_r, w_r = hirschberg(alphabet, scoring_matrix, s[s_mid:], t[t_mid:])

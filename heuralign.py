@@ -4,6 +4,8 @@ import numpy as np
 
 # And use ord
 
+# Use RE to find string matches: interesting idea!
+
 # Polynomial rolling hashing function
 def hash(s):
 

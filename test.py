@@ -50,14 +50,16 @@ tests = {
                    "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD")
 }
 
-functions = [dynprog]
+functions = [dynprog, dynproglin]
 
 for function in functions:
 
     print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["test.py"])
+    # for key, items in tests.items():
 
+    a = function(*tests["Duo"])
+    #
     print(a[3])
     print(a[4])
     print("Score:   ", a[0])

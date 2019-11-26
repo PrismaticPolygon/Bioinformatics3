@@ -1,4 +1,5 @@
-from main import dynprog, dynproglin, heuralign
+from main import dynprog, dynproglin
+from heuralign import heuralign
 
 tests = {
     "Duo": ("ABC", [
@@ -50,7 +51,7 @@ tests = {
                    "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD")
 }
 
-functions = [dynprog, dynproglin]
+functions = [dynprog, heuralign]
 
 for function in functions:
 
@@ -58,7 +59,7 @@ for function in functions:
 
     # for key, items in tests.items():
 
-    a = function(*tests["Duo"])
+    a = function(*tests["heuristic3"])
     #
     print(a[3])
     print(a[4])

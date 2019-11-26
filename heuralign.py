@@ -1,80 +1,222 @@
 import numpy as np
 
-# Real-life matches often contain long strings with gap-less matches.
+def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, local=True, sublinear=False):
 
-# And use ord
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
 
-# Use RE to find string matches: interesting idea!
+    shape = (2, size_x) if sublinear else (size_y, size_x)  # The shape of the score matrix. If sublinear, we only use 2 rows.
 
-# Polynomial rolling hashing function
-def hash(s):
+    D = np.zeros(shape, dtype="int16")
 
-    # https://cp-algorithms.com/string/string-hashing.html
-    # p should be roughly equal to the number of characters in the input alphabet
-    p = 31
+    max_i = None    # The index of the cell containing the maximum score
+    max_score = None    # The maximum score observed
 
-    # m should be a large number: the probability of two strings colliding is roughly 1 / m.
-    m = 10 ** 9 + 9
+    for y in range(size_y):  # y
 
-    hash_value = 0
-    p_pow = 1
+        min_x = 0 if band_width is None else y - band_width # If banded, the minimum x that we explore
+        max_x = size_x if band_width is None else y + band_width + 1  # If banded, the maximum x that we explore.
 
-    for char in s:
+        for x in range(min_x, max_x):
 
-        hash_value = (hash_value + ord(char) * p_pow) % m
-        p_pow = (p_pow * p) % m
+            if not local and y == 0 and x > 0:    # First row: the cost of matching t with all gaps. If local, should be 0
 
-    return hash_value
+                D[0, x] = D[0, x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_")
 
+            elif not local and x == 0 and y > 0:  # First column: the cost of matching s with all gaps. If local, should be 0
 
-def chain():
+                D_y = 1 if sublinear else y
 
-    pass
-    # Find a collection of non-contradicting sub-alignments that maximise some scoring function.
+                D[D_y, 0] = D[D_y - 1, 0] + cost(alphabet, scoring_matrix, s[y - 1], "_")
 
+            elif 0 < x < size_x and 0 < y:
 
+                D_y = 1 if sublinear else y
+
+                D[D_y, x] = max(
+                    D[D_y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters
+                    D[D_y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"), # The cost of matching a gap in s with a character in t
+                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
+                )
+
+                D[D_y, x] = 0 if (local and D[D_y, x] < -3) else D[D_y, x]
+
+                if max_i is None or D[D_y, x] > max_score:
+
+                    max_i = y, x
+                    max_score = D[D_y, x]
+
+        if y > 0 and sublinear:
+
+            D[0] = D[1].copy()
+
+    return (D[1] if sublinear else D), max_i
+
+def build_lookup(s, ktup):
+
+    lookup = dict()
+
+    # Build lookup table
+    for y in range(len(s) - ktup + 1):
+
+        word = s[y:y + ktup]
+
+        if word not in lookup:
+
+            lookup[word] = [y]
+
+        else:
+
+            lookup[word].append(y)
+
+    return lookup
+
+def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup):
+
+    diagonals = dict()
+
+    for x in range(len(t) - ktup + 1):
+
+        word = t[x:x + ktup]
+
+        if word in lookup:
+
+            for y in lookup[word]:
+
+                diagonal = x - y
+
+                if diagonal not in diagonals:
+
+                    seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup))
+
+                    diagonals[diagonal] = [seed]
+
+                else:
+
+                    last_x, last_y, last_length = diagonals[diagonal][-1]  # Get the last entry on this diagonal
+
+                    if last_x + last_length >= x and last_y + last_length >= y:  # If they overlap, update the old one
+
+                        new_length = x - last_x + ktup
+
+                        seed = extend(alphabet, scoring_matrix, s, t, (last_x, last_y, new_length))
+
+                        diagonals[diagonal][-1] = seed
+                    #
+                    elif (x, y) not in diagonals[diagonal]:
+
+                        seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup))
+
+                        diagonals[diagonal].append(seed)
+
+    # Why have I chosen 7?
+    # What about 0?
+    # Is this equivalent to shifting the whole thing?
+    # If so... to what?
+
+    return diagonals
+
+def best_diagonal(s, t, diagonals):
+
+    best_x, best_y = None, None
+    best_diagonal_length = 0
+
+    for diagonal, seeds in diagonals.items():
+
+        diagonal_length = 0
+        diagonal_x, diagonal_y = len(s), len(t)
+
+        for seed in seeds:
+
+            x, y, length = seed
+
+            diagonal_length += length
+
+            if x < diagonal_x:
+
+                diagonal_x = x
+
+            if y < diagonal_y:
+
+                diagonal_y = y
+
+        # print("{}: {} ({}, {})".format(diagonal, diagonal_length, diagonal_x, diagonal_y), end="\n")
+
+        if diagonal_length > best_diagonal_length:
+
+            best_x = diagonal_x
+            best_y = diagonal_y
+            best_diagonal_length = diagonal_length
+
+    return best_x, best_y
 
 def heuralign(alphabet, scoring_matrix, s, t):
 
     scoring_matrix = np.array(scoring_matrix)
-    ktup = 3
-    lookup = dict()
-    size_x = len(t)
-    size_y = len(s)
+    alphabet += "_"
+    ktup = 2
 
-    for y in range(len(s) - ktup + 1):
+    lookup = build_lookup(s, ktup)
+    diagonals = build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup)
+    best_x, best_y = best_diagonal(s, t, diagonals)
 
-        hash_word = hash(s[y:y + ktup])
+    s = s[best_x:]
+    t = t[best_y:]
 
-        lookup[hash_word] = [y] if hash_word not in lookup else lookup[hash_word] + [y]
+    D, _ = score_matrix(alphabet, scoring_matrix, s, t, band_width=29)
 
-    matches = dict()
+    return traceback(alphabet, scoring_matrix, s, t, D)
 
-    for x in range(len(t) - ktup + 1):
+def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
-        hash_word = hash(t[x:x + ktup])
+    score = np.amax(D) if local else D[-1][-1]
+    y, x = np.unravel_index(D.argmax(), D.shape) if local else (len(s), len(t))
 
-        if hash_word in lookup:
+    s_align, t_align = "", ""
+    s_matches, t_matches = [], []
 
-            for y in lookup[hash_word]:
+    while y != 0 or x != 0:
 
-                diagonal = y - x
+        current = D[y][x]
 
-                if diagonal not in matches:
+        if local and current == 0:  # The end of the best local alignment
 
-                    matches[diagonal] = [(x, y)]
+            break
 
-                else:
+        elif current == D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]): # Match (D)
 
-                    matches[diagonal].append((x, y))
+            x -= 1
+            y -= 1
 
-    for match in matches:
+            s_align = s[y] + s_align
+            t_align = t[x] + t_align
 
-        print(match)
+            s_matches.append(y)
+            t_matches.append(x)
 
+        elif current == D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"):  # Matching a gap in s with a character in t (L)
 
-def extend(alphabet, scoring_matrix, s, t, x, y, length):
+            x -= 1
+            s_align = "_" + s_align
+            t_align = t[x] + t_align
 
+        elif current == D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"):  # Matching a gap in t with a character in s (U)
+
+            y -= 1
+            s_align = s[y] + s_align
+            t_align = "_" + t_align
+
+        else:
+
+            # pass
+
+            raise ValueError("Something's fucked!")
+
+    return score, np.array(rev(s_matches)), np.array(rev(t_matches)), s_align, t_align
+
+def extend(alphabet, scoring_matrix, s, t, seed):
+
+    x, y, length = seed
     up, down = 1, 1
 
     while up or down:
@@ -99,31 +241,49 @@ def extend(alphabet, scoring_matrix, s, t, x, y, length):
 
     return x, y, length
 
-def cost(alphabet, scoring_matrix, c1, c2):
+def get_threshold(alphabet, scoring_matrix, s, t):
 
-    # print(c1, c2)
+    char_freq = {i: (s + t).count(i) / len(s + t) for i in alphabet}
+
+    pairs = [(i, j) for i in alphabet for j in alphabet]
+
+    pair_weights = [char_freq[x] + char_freq[y] for (x, y) in pairs]
+
+    return 0
+
+    # return np.average([cost(alphabet, scoring_matrix, x, y) for (x, y) in pairs], weights=pair_weights)
+
+def align_score(alphabet, scoring_matrix, s_align, t_align):
+
+    assert(len(s_align) == len(t_align))
+
+    score = 0
+
+    for i in range(len(s_align)):
+
+        score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
+
+    return score
+
+def cost(alphabet, scoring_matrix, c1, c2):
 
     return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
 
-alphabet = "ABCD"
-scoring_matrix = [
-            [ 1,-5,-5,-5,-1],
-            [-5, 1,-5,-5,-1],
-            [-5,-5, 5,-5,-4],
-            [-5,-5,-5, 6,-4],
-            [-1,-1,-4,-4,-9]]
-s = "DDCDDCCCDCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCDDDCDADCDCDCDCD"
-t = "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD"
+def rev(l):
 
-x, y, length = 3, 3, 3
+    return l[::-1]
 
-# extended = extend(alphabet, scoring_matrix, s, t, x, y, length)
-# print(extended)
-# We want more than the i
+# alphabet = "ABCD_"
+# scoring_matrix = [
+#             [ 1,-5,-5,-5,-1],
+#             [-5, 1,-5,-5,-1],
+#             [-5,-5, 5,-5,-4],
+#             [-5,-5,-5, 6,-4],
+#             [-1,-1,-4,-4,-9]]
+# # s = "DDCDDCCCDCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCDDDCDADCDCDCDCD"
+# # t = "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+#
+# s = "ABCDABC"
+# t = "ABCAABC"
 
-heuralign(alphabet, scoring_matrix, s, t)
-
-
-# The main modification is a shearing algorithm to save space.
-# Looks like I'm going to be doing everything simultaneously.
-
+# heuralign(alphabet, scoring_matrix, s, t)

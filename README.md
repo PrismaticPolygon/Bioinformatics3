@@ -42,4 +42,22 @@ Implemented a simple variant of [FASTA](https://en.wikipedia.org/wiki/FASTA), wi
 ## Part 2
 
 > Design your own substitution-cost function that operates on pairs of sequences of letters instead of on pairs of 
-letters. Clearly describe it on at most one page. [15 marks]
+letters. Clearly describe it on at most one page  [15 marks], e.g.
+> * give a cost of a multi-letter substitution of `ABC` by `CBB` which is different from the simple
+addition of the single-letter costs, i.e. the mismatches `(A, C)`, `(C, B)` and the match `(B, B)`
+> * have a fixed cost for inserting / deleting a sequence of `C` irrespective of its length, e.g. the first `C`
+incurs a cost of `1\2`, the second `1\4`, and so on.
+
+The lectures slides available [here](https://www.site.uottawa.ca/~lucia/courses/5126-10/lecturenotes/03-05SequenceSimilarity.pdf)
+introduce a "general gap penalty" `g(q)` for a gap of length `q`, based on the idea
+that mutations (which may cause the insertion of deletion of a substring) may be as likely
+as the indel of a single base.
+
+#### Ideas
+* Mismatches of the same character are not scored poorly. 
+
+`g(q) = h + qs`, where `h` is the penalty for initiating the gap, and `s` is a penalty
+proportional to the length of the gap.
+
+
+

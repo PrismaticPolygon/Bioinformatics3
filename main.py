@@ -1,32 +1,104 @@
 import numpy as np
 
 # http://biorecipes.com/DynProgBasic/code.html
-def dynprog(alphabet, scoring_matrix, s, t):
+def dynprog(alphabet, scoring_matrix, s, t, local=True):
 
-    alphabet += "_"
+    # print("dynprog", local, s, t)
+
+    alphabet = alphabet
     scoring_matrix = np.array(scoring_matrix)
 
-    D, _ = score_matrix(alphabet, scoring_matrix, s, t)
+    D, (end_y, end_x) = global_quadratic(alphabet, scoring_matrix, s, t)
 
-    return traceback(alphabet, scoring_matrix, s, t, D)
+    # print(end_y, end_x)
+
+    # We're not passing through the parameter correctly.
+    print(local)
+
+    return traceback(alphabet, scoring_matrix, s, t, D, local=local)
+
+
+
+def global_quadratic(alphabet, scoring_matrix, s, t):
+
+    print(s, t)
+
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+
+    D = np.zeros((size_y, size_x), dtype="int16")
+
+    max_i = None
+    max_score = None
+
+    for y in range(size_y):  # y
+
+        for x in range(size_x):
+
+            if y == 0 and x > 0:    # First row: the cost of matching t with all gaps
+
+                D[0, x] = D[0, x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_")
+
+            elif x == 0 and y > 0:  # First column: the cost of matching s with all gaps
+
+                D[y, 0] = D[y - 1, 0] + cost(alphabet, scoring_matrix, s[y - 1], "_")
+
+            elif 0 < x < size_x and y > 0:
+
+                D[y, x] = max(
+                    D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters (sub)
+                    D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1],
+                                         "_"), # The cost of matching a gap in t with a character in s (del)
+                    D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_") # The cost of matching a gap in s with a character in t (ins)
+                )
+
+                if max_i is None or D[y, x] > max_score:
+
+                    max_i = y, x
+                    max_score = D[y, x]
+
+    print(D)
+
+    return D, max_i
 
 # Smith Waterman is used for local
 def dynproglin(alphabet, scoring_matrix, s, t):
+
+    # print(s, t)
 
     alphabet += "_"
     scoring_matrix = np.array(scoring_matrix)
 
     _, (end_y, end_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
 
+    # print(end_y, end_x)
+    #
+    # print(s[:end_y], t[:end_x])
+
     s = rev(s[:end_y])
     t = rev(t[:end_x])
 
+    # print(s, t)
+
     _, (start_y, start_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
+
+    # print(start_y, start_x)
+
+    # print(s[:start_y], t[:start_x])
+    # This doesn't work. Must be some sublinear BS. Or my global shit is fucked.
 
     s = rev(s[:start_y])
     t = rev(t[:start_x])
 
+    # print(s, t)
+
+    # So it's a flaw with my hirschberg, or backtrack; I pass in the right fields.
+    # Somehow, we're
+
     s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
+
+    # print(s_align, t_align)
+
     score = align_score(alphabet, scoring_matrix, s_align, t_align)
 
     s_matches, t_matches = get_alignment_indices(s_align, t_align)
@@ -84,13 +156,21 @@ def heuralign(alphabet, scoring_matrix, s, t):
 
         return traceback(alphabet, scoring_matrix, s, t, D)
 
+# Perhaps it never worked.
+
 # https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def hirschberg(alphabet, scoring_matrix, s, t):
 
-    s_align, t_align = "", ""
-    # We can calculate the score in here, it seems. Not very well, mind you: I'd rather not risk breaking anything.
+    print("Hirschberg", s, t)
 
-    if len(s) == 0:
+    # s == X
+    # t == Y
+    # s_align = Z
+    # t_align = W
+
+    s_align, t_align = "", ""
+
+    if len(s) == 0: # Ah. So we fall through to here several times. That's why we're matching with gaps.
 
         for i in range(len(t)):
 
@@ -106,16 +186,26 @@ def hirschberg(alphabet, scoring_matrix, s, t):
 
     elif len(s) == 1 or len(t) == 1:
 
-        _, _, _, s_align, t_align = dynprog(alphabet, scoring_matrix, s, t)
+        print("dynprog", s, t)
+
+        _, _, _, s_align, t_align = dynprog(alphabet, scoring_matrix, s, t, local=False)
 
     else:
 
-        s_mid = len(s) // 2
-        score_l, _ = score_matrix(alphabet, scoring_matrix, s[:s_mid], t, local=False, sublinear=True)
+        s_mid = int(len(s) / 2)
+
+        print("s", s)
+        print("left", s[:s_mid])
+        print("right", s[s_mid:])
+
+        print("t", t)
+
+        score_l, _ = score_matrix(alphabet, scoring_matrix, s[:s_mid], t, local=False, sublinear=False)
 
         # print("Score_l: ", score_l)
+        # No. We're deleting a character and not adding it back.
 
-        score_r, _ = score_matrix(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t), local=False, sublinear=True)
+        score_r, _ = score_matrix(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t), local=False, sublinear=False)
 
         # print("Score_r", score_r)
 
@@ -123,24 +213,24 @@ def hirschberg(alphabet, scoring_matrix, s, t):
 
         # print("t_mid", t_mid)
 
+        # Okay. I am happy that this follows the algorithm exactly.
         z_l, w_l = hirschberg(alphabet, scoring_matrix, s[:s_mid], t[:t_mid])
         z_r, w_r = hirschberg(alphabet, scoring_matrix, s[s_mid:], t[t_mid:])
 
         s_align = z_l + z_r
         t_align = w_l + w_r
 
+        # print("s_align", s_align)
+        # print("t_align", t_align)
+
     return s_align, t_align
 
-def score_matrix(alphabet, scoring_matrix, s, t, banded=None, local=True, sublinear=False):
+def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
 
     shape = (2, size_x) if sublinear else (size_y, size_x)
-
-    if banded is not None:
-
-        width = banded // 2
 
     D = np.zeros(shape, dtype="int16")
 
@@ -149,10 +239,7 @@ def score_matrix(alphabet, scoring_matrix, s, t, banded=None, local=True, sublin
 
     for y in range(size_y):  # y
 
-        min_x = 0 if banded is None else y - width
-        max_x = size_x if banded is None else y + width + 1
-
-        for x in range(min_x, max_x):
+        for x in range(size_x):
 
             if not local and y == 0 and x > 0:    # First row: the cost of matching t with all gaps
 
@@ -169,9 +256,10 @@ def score_matrix(alphabet, scoring_matrix, s, t, banded=None, local=True, sublin
                 D_y = 1 if sublinear else y
 
                 D[D_y, x] = max(
-                    D[D_y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters
-                    D[D_y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"), # The cost of matching a gap in s with a character in t
-                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
+                    D[D_y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters (sub)
+                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1],
+                                         "_"), # The cost of matching a gap in t with a character in s (del)
+                    D[D_y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_") # The cost of matching a gap in s with a character in t (ins)
                 )
 
                 D[D_y, x] = 0 if (local and D[D_y, x] < 0) else D[D_y, x]
@@ -283,3 +371,29 @@ def cost(alphabet, scoring_matrix, c1, c2):
 def rev(l):
 
     return l[::-1]
+
+# alphabet = "ABC_"
+# scoring_matrix = np.array([
+#             [1, -1, -2, -1],
+#             [-1, 2, -4, -1],
+#             [-2, -4, 3, -2],
+#             [-1, -1, -2, 0]
+#         ])
+# s = "BAAC"
+# t = "BAC"
+#
+# s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
+#
+# print(s_align)
+# print(t_align)
+
+# I'm sick and tired of this.
+
+# score = align_score(alphabet, scoring_matrix, s_align, t_align)
+#
+# s_matches, t_matches = get_alignment_indices(s_align, t_align)
+
+
+
+# Okay. The two strings in question are BAAC and BAC
+# I just need to verify that hirschberg works on them

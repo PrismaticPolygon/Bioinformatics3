@@ -1,6 +1,6 @@
 import numpy as np
 
-def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, local=True, sublinear=False):
+def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, local=True, sublinear=False, threshold=0):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
@@ -39,7 +39,7 @@ def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, local=True, su
                     D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
                 )
 
-                D[D_y, x] = 0 if (local and D[D_y, x] < -3) else D[D_y, x]
+                D[D_y, x] = 0 if (local and D[D_y, x] < threshold) else D[D_y, x]
 
                 if max_i is None or D[D_y, x] > max_score:
 
@@ -56,7 +56,6 @@ def build_lookup(s, ktup):
 
     lookup = dict()
 
-    # Build lookup table
     for y in range(len(s) - ktup + 1):
 
         word = s[y:y + ktup]
@@ -71,7 +70,27 @@ def build_lookup(s, ktup):
 
     return lookup
 
-def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup):
+def build_lookup_II(t, ktup, lookup):
+
+    lookup_II = dict()
+
+    for x in range(len(t) - ktup + 1):
+
+        word = t[x:x + ktup]
+
+        if word in lookup:
+
+            if word not in lookup_II:
+
+                lookup_II[word] = [x]
+
+            else:
+
+                lookup_II[word].append(x)
+
+    return lookup_II
+
+def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold):
 
     diagonals = dict()
 
@@ -87,7 +106,7 @@ def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup):
 
                 if diagonal not in diagonals:
 
-                    seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup))
+                    seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup), threshold)
 
                     diagonals[diagonal] = [seed]
 
@@ -99,22 +118,19 @@ def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup):
 
                         new_length = x - last_x + ktup
 
-                        seed = extend(alphabet, scoring_matrix, s, t, (last_x, last_y, new_length))
+                        seed = extend(alphabet, scoring_matrix, s, t, (last_x, last_y, new_length), threshold)
 
                         diagonals[diagonal][-1] = seed
                     #
                     elif (x, y) not in diagonals[diagonal]:
 
-                        seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup))
+                        seed = extend(alphabet, scoring_matrix, s, t, (x, y, ktup), threshold)
 
                         diagonals[diagonal].append(seed)
 
-    # Why have I chosen 7?
-    # What about 0?
-    # Is this equivalent to shifting the whole thing?
-    # If so... to what?
-
     return diagonals
+
+# http://www.cs.tau.ac.il/~rshamir/algmb/98/scribe/html/lec03/node2.html
 
 def best_diagonal(s, t, diagonals):
 
@@ -150,22 +166,40 @@ def best_diagonal(s, t, diagonals):
 
     return best_x, best_y
 
+# Find the 10 best diagonal runs.
+# Give each hot spot a socre, and give the space between between consecut
+
 def heuralign(alphabet, scoring_matrix, s, t):
 
     scoring_matrix = np.array(scoring_matrix)
     alphabet += "_"
     ktup = 2
+    threshold = get_threshold(alphabet, scoring_matrix, s, t)
 
     lookup = build_lookup(s, ktup)
-    diagonals = build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup)
+
+    print(lookup)
+
+    lookup_ii = build_lookup_II(t, ktup, lookup)
+
+    print(lookup_ii)
+
+    diagonals = build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold)
+
+    # If I did it Peter's way...
+
+    print(diagonals)
+
     best_x, best_y = best_diagonal(s, t, diagonals)
 
     s = s[best_x:]
     t = t[best_y:]
 
-    D, _ = score_matrix(alphabet, scoring_matrix, s, t, band_width=29)
+    D, _ = score_matrix(alphabet, scoring_matrix, s, t, band_width=10, threshold=threshold)
 
-    return traceback(alphabet, scoring_matrix, s, t, D)
+    score, s_matches, t_matches, s_align, t_align = traceback(alphabet, scoring_matrix, s, t, D)
+
+    return score, s_matches + best_x, t_matches + best_y, s_align, t_align
 
 def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
@@ -208,20 +242,18 @@ def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
         else:
 
-            # pass
-
             raise ValueError("Something's fucked!")
 
     return score, np.array(rev(s_matches)), np.array(rev(t_matches)), s_align, t_align
 
-def extend(alphabet, scoring_matrix, s, t, seed):
+def extend(alphabet, scoring_matrix, s, t, seed, threshold):
 
     x, y, length = seed
     up, down = 1, 1
 
     while up or down:
 
-        if x == 0 or y == 0 or cost(alphabet, scoring_matrix, t[x - 1], s[y - 1]) < 0:
+        if x == 0 or y == 0 or cost(alphabet, scoring_matrix, t[x - 1], s[y - 1]) < threshold:
 
             up = 0
 
@@ -231,7 +263,7 @@ def extend(alphabet, scoring_matrix, s, t, seed):
             y -= 1
             length += 1
 
-        if x + length == len(t) or y + length == len(s) or cost(alphabet, scoring_matrix, t[x + 1], s[y + 1]) < 0:
+        if x + length == len(t) or y + length == len(s) or cost(alphabet, scoring_matrix, t[x + 1], s[y + 1]) < threshold:
 
             down = 0
 
@@ -249,9 +281,7 @@ def get_threshold(alphabet, scoring_matrix, s, t):
 
     pair_weights = [char_freq[x] + char_freq[y] for (x, y) in pairs]
 
-    return 0
-
-    # return np.average([cost(alphabet, scoring_matrix, x, y) for (x, y) in pairs], weights=pair_weights)
+    return np.average([cost(alphabet, scoring_matrix, x, y) for (x, y) in pairs], weights=pair_weights)
 
 def align_score(alphabet, scoring_matrix, s_align, t_align):
 

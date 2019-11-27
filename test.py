@@ -51,15 +51,17 @@ tests = {
                    "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD")
 }
 
-functions = [dynprog, heuralign]
+functions = [dynprog, dynproglin]
+
+# for key, items in tests.items():
 
 for function in functions:
 
+    # items = tests["test.py"]
+
     print("**** " + function.__name__.upper() + " ****\n")
 
-    # for key, items in tests.items():
-
-    a = function(*tests["heuristic3"])
+    a = function(*tests["test.py"])
     #
     print(a[3])
     print(a[4])

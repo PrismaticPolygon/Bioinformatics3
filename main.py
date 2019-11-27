@@ -3,108 +3,56 @@ import numpy as np
 # http://biorecipes.com/DynProgBasic/code.html
 def dynprog(alphabet, scoring_matrix, s, t, local=True):
 
-    # print("dynprog", local, s, t)
-
-    alphabet = alphabet
+    alphabet = alphabet if alphabet[-1] == "_" else alphabet + "_"
     scoring_matrix = np.array(scoring_matrix)
 
-    D, (end_y, end_x) = global_quadratic(alphabet, scoring_matrix, s, t)
-
-    # print(end_y, end_x)
-
-    # We're not passing through the parameter correctly.
-    print(local)
+    D, _ = score_matrix(alphabet, scoring_matrix, s, t, local=local)
 
     return traceback(alphabet, scoring_matrix, s, t, D, local=local)
 
-
-
-def global_quadratic(alphabet, scoring_matrix, s, t):
-
-    print(s, t)
-
-    size_y = len(s) + 1  # y-axis
-    size_x = len(t) + 1  # x-axis
-
-    D = np.zeros((size_y, size_x), dtype="int16")
-
-    max_i = None
-    max_score = None
-
-    for y in range(size_y):  # y
-
-        for x in range(size_x):
-
-            if y == 0 and x > 0:    # First row: the cost of matching t with all gaps
-
-                D[0, x] = D[0, x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_")
-
-            elif x == 0 and y > 0:  # First column: the cost of matching s with all gaps
-
-                D[y, 0] = D[y - 1, 0] + cost(alphabet, scoring_matrix, s[y - 1], "_")
-
-            elif 0 < x < size_x and y > 0:
-
-                D[y, x] = max(
-                    D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters (sub)
-                    D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1],
-                                         "_"), # The cost of matching a gap in t with a character in s (del)
-                    D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_") # The cost of matching a gap in s with a character in t (ins)
-                )
-
-                if max_i is None or D[y, x] > max_score:
-
-                    max_i = y, x
-                    max_score = D[y, x]
-
-    print(D)
-
-    return D, max_i
-
-# Smith Waterman is used for local
 def dynproglin(alphabet, scoring_matrix, s, t):
 
-    # print(s, t)
-
-    alphabet += "_"
+    alphabet = alphabet if alphabet[-1] == "_" else alphabet + "_"
     scoring_matrix = np.array(scoring_matrix)
 
-    _, (end_y, end_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
-
-    # print(end_y, end_x)
-    #
-    # print(s[:end_y], t[:end_x])
+    _, (end_y, end_x) = score_matrix(alphabet, scoring_matrix, s, t, local=True, linear=True)
 
     s = rev(s[:end_y])
     t = rev(t[:end_x])
 
-    # print(s, t)
-
-    _, (start_y, start_x) = score_matrix(alphabet, scoring_matrix, s, t, sublinear=True)
-
-    # print(start_y, start_x)
-
-    # print(s[:start_y], t[:start_x])
-    # This doesn't work. Must be some sublinear BS. Or my global shit is fucked.
+    _, (start_y, start_x) = score_matrix(alphabet, scoring_matrix, s, t, local=True, linear=True)
 
     s = rev(s[:start_y])
     t = rev(t[:start_x])
 
-    # print(s, t)
-
-    # So it's a flaw with my hirschberg, or backtrack; I pass in the right fields.
-    # Somehow, we're
-
     s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
 
-    # print(s_align, t_align)
+    score = 0
+    s_matches, t_matches = [], []
+    s_point, t_point = 0, 0
 
-    score = align_score(alphabet, scoring_matrix, s_align, t_align)
+    for i in range(len(s_align)):
 
-    s_matches, t_matches = get_alignment_indices(s_align, t_align)
+        if s_align[i] != "_" and t_align[i] != "_":
 
-    s_matches += end_y - start_y
-    t_matches += end_x - start_x
+            s_matches.append(s_point)
+            t_matches.append(t_point)
+
+            s_point += 1
+            t_point += 1
+
+        if s_align[i] != "_" and t_align[i] == "_":
+
+            s_point += 1
+
+        if s_align[i] == "_" and t_align[i] != "_":
+
+            t_point += 1
+
+        score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
+
+    s_matches = np.array(s_matches) + end_y - start_y
+    t_matches = np.array(t_matches) + end_x - start_x
 
     return score, s_matches, t_matches, s_align, t_align
 
@@ -161,16 +109,9 @@ def heuralign(alphabet, scoring_matrix, s, t):
 # https://en.wikipedia.org/wiki/Hirschberg's_algorithm
 def hirschberg(alphabet, scoring_matrix, s, t):
 
-    print("Hirschberg", s, t)
-
-    # s == X
-    # t == Y
-    # s_align = Z
-    # t_align = W
-
     s_align, t_align = "", ""
 
-    if len(s) == 0: # Ah. So we fall through to here several times. That's why we're matching with gaps.
+    if len(s) == 0:
 
         for i in range(len(t)):
 
@@ -186,51 +127,32 @@ def hirschberg(alphabet, scoring_matrix, s, t):
 
     elif len(s) == 1 or len(t) == 1:
 
-        print("dynprog", s, t)
-
         _, _, _, s_align, t_align = dynprog(alphabet, scoring_matrix, s, t, local=False)
 
     else:
 
         s_mid = int(len(s) / 2)
 
-        print("s", s)
-        print("left", s[:s_mid])
-        print("right", s[s_mid:])
+        score_l, _ = score_matrix(alphabet, scoring_matrix, s[:s_mid], t, linear=True, local=False)
 
-        print("t", t)
-
-        score_l, _ = score_matrix(alphabet, scoring_matrix, s[:s_mid], t, local=False, sublinear=False)
-
-        # print("Score_l: ", score_l)
-        # No. We're deleting a character and not adding it back.
-
-        score_r, _ = score_matrix(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t), local=False, sublinear=False)
-
-        # print("Score_r", score_r)
+        score_r, _ = score_matrix(alphabet, scoring_matrix, rev(s[s_mid:]), rev(t), linear=True, local=False)
 
         t_mid = np.argmax(score_l + rev(score_r))
 
-        # print("t_mid", t_mid)
-
-        # Okay. I am happy that this follows the algorithm exactly.
         z_l, w_l = hirschberg(alphabet, scoring_matrix, s[:s_mid], t[:t_mid])
         z_r, w_r = hirschberg(alphabet, scoring_matrix, s[s_mid:], t[t_mid:])
 
         s_align = z_l + z_r
         t_align = w_l + w_r
 
-        # print("s_align", s_align)
-        # print("t_align", t_align)
-
     return s_align, t_align
 
-def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
+def score_matrix(alphabet, scoring_matrix, s, t, linear=False, local=True):
 
     size_y = len(s) + 1  # y-axis
     size_x = len(t) + 1  # x-axis
 
-    shape = (2, size_x) if sublinear else (size_y, size_x)
+    shape = (2, size_x) if linear else (size_y, size_x)
 
     D = np.zeros(shape, dtype="int16")
 
@@ -247,18 +169,17 @@ def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
 
             elif not local and x == 0 and y > 0:  # First column: the cost of matching s with all gaps
 
-                D_y = 1 if sublinear else y
+                D_y = 1 if linear else y
 
                 D[D_y, 0] = D[D_y - 1, 0] + cost(alphabet, scoring_matrix, s[y - 1], "_")
 
             elif 0 < x < size_x and y > 0:
 
-                D_y = 1 if sublinear else y
+                D_y = 1 if linear else y
 
                 D[D_y, x] = max(
                     D[D_y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters (sub)
-                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1],
-                                         "_"), # The cost of matching a gap in t with a character in s (del)
+                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"), # The cost of matching a gap in t with a character in s (del)
                     D[D_y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_") # The cost of matching a gap in s with a character in t (ins)
                 )
 
@@ -269,11 +190,11 @@ def score_matrix(alphabet, scoring_matrix, s, t, local=True, sublinear=False):
                     max_i = y, x
                     max_score = D[D_y, x]
 
-        if y > 0 and sublinear:
+        if linear and y > 0:
 
             D[0] = D[1].copy()
 
-    return (D[1] if sublinear else D), max_i
+    return (D[1] if linear else D), max_i
 
 def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
@@ -325,45 +246,6 @@ def traceback(alphabet, scoring_matrix, s, t, D, local=True):
 
     return score, s_matches, t_matches, s_align, t_align
 
-def get_alignment_indices(s_align, t_align):
-
-    assert(len(s_align) == len(t_align))
-
-    s_matches, t_matches = [], []
-    s_point, t_point = 0, 0
-
-    for i in range(len(s_align)):
-
-        if s_align[i] != "_" and t_align[i] != "_":
-
-            s_matches.append(s_point)
-            t_matches.append(t_point)
-
-            s_point += 1
-            t_point += 1
-
-        if s_align[i] != "_" and t_align[i] == "_":
-
-            s_point += 1
-
-        if s_align[i] == "_" and t_align[i] != "_":
-
-            t_point += 1
-
-    return np.array(s_matches), np.array(t_matches)
-
-def align_score(alphabet, scoring_matrix, s_align, t_align):
-
-    assert(len(s_align) == len(t_align))
-
-    score = 0
-
-    for i in range(len(s_align)):
-
-        score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
-
-    return score
-
 def cost(alphabet, scoring_matrix, c1, c2):
 
     return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
@@ -371,29 +253,3 @@ def cost(alphabet, scoring_matrix, c1, c2):
 def rev(l):
 
     return l[::-1]
-
-# alphabet = "ABC_"
-# scoring_matrix = np.array([
-#             [1, -1, -2, -1],
-#             [-1, 2, -4, -1],
-#             [-2, -4, 3, -2],
-#             [-1, -1, -2, 0]
-#         ])
-# s = "BAAC"
-# t = "BAC"
-#
-# s_align, t_align = hirschberg(alphabet, scoring_matrix, s, t)
-#
-# print(s_align)
-# print(t_align)
-
-# I'm sick and tired of this.
-
-# score = align_score(alphabet, scoring_matrix, s_align, t_align)
-#
-# s_matches, t_matches = get_alignment_indices(s_align, t_align)
-
-
-
-# Okay. The two strings in question are BAAC and BAC
-# I just need to verify that hirschberg works on them

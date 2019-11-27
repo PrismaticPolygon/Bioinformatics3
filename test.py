@@ -1,5 +1,6 @@
 from main import dynprog, dynproglin
-from heuralign import heuralign
+# from dynproglin import dynproglin
+# from heuralign import heuralign
 
 tests = {
     "Duo": ("ABC", [
@@ -53,18 +54,23 @@ tests = {
 
 functions = [dynprog, dynproglin]
 
-# for key, items in tests.items():
+for key, items in tests.items():
 
-for function in functions:
+    for function in functions:
 
-    # items = tests["test.py"]
+    # items = tests["heuristic3"]
 
-    print("**** " + function.__name__.upper() + " ****\n")
+        print("**** " + function.__name__.upper() + " ****\n")
 
-    a = function(*tests["test.py"])
-    #
-    print(a[3])
-    print(a[4])
-    print("Score:   ", a[0])
-    print("Indices: ", a[1], a[2])
-    print("")
+        # print(items[2])
+        # print(items[3])
+
+        print("")
+
+        a = function(*items)
+        #
+        print(a[3])
+        print(a[4])
+        print("Score:   ", a[0])
+        print("Indices: ", a[1], a[2])
+        print("")

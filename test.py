@@ -1,7 +1,4 @@
-from main import dynprog, dynproglin
-# from dynproglin import dynproglin
-# from heuralign import heuralign
-
+from main import dynprog, dynproglin, heuralign
 tests = {
     "Duo": ("ABC", [
             [1,-1,-2,-1],
@@ -27,7 +24,7 @@ tests = {
             [-1, 2, -4, -1],
             [-2, -4, 3, -2],
             [-1, -1, -2, 0]],
-              "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "AAACCBACBAC"),
+              "ABCCCABABACABCABCABCBAABABCCCAAACBCBCBABCABCBABBBCABCA", "BCCCABACBACBCABCA"),
     "heuristic1": ("ABCD", [
             [ 1,-5,-5,-5,-1],
             [-5, 1,-5,-5,-1],
@@ -52,25 +49,29 @@ tests = {
                    "DDCDDCCCDCBCCCCDDDCDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBDCDCDCDCD")
 }
 
-functions = [dynprog, dynproglin]
+functions = [dynprog, dynproglin, heuralign]
 
-for key, items in tests.items():
+# for key, items in tests.items():
+# Definitely not perfect.
+# Okay. Peter's is better. Let's groom his into my format.
+
+for key, variables in tests.items():
 
     for function in functions:
 
-    # items = tests["heuristic3"]
+        variables = tests[key]
 
         print("**** " + function.__name__.upper() + " ****\n")
 
-        # print(items[2])
-        # print(items[3])
+        # print("")
+        # It is definitely faster. No I groom it to match my style of code.
 
-        print("")
+        a = function(*variables)
 
-        a = function(*items)
+        # print(a)
         #
-        print(a[3])
-        print(a[4])
+        # print(a[3])
+        # print(a[4])
         print("Score:   ", a[0])
         print("Indices: ", a[1], a[2])
         print("")

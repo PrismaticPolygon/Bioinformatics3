@@ -1,58 +1,9 @@
 import numpy as np
+from main import traceback
 
-def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, local=True, sublinear=False, threshold=0):
+# Nah. Let's just use what we have now.
 
-    size_y = len(s) + 1  # y-axis
-    size_x = len(t) + 1  # x-axis
-
-    shape = (2, size_x) if sublinear else (size_y, size_x)  # The shape of the score matrix. If sublinear, we only use 2 rows.
-
-    D = np.zeros(shape, dtype="int16")
-
-    max_i = None    # The index of the cell containing the maximum score
-    max_score = None    # The maximum score observed
-
-    for y in range(size_y):  # y
-
-        min_x = 0 if band_width is None else y - band_width # If banded, the minimum x that we explore
-        max_x = size_x if band_width is None else y + band_width + 1  # If banded, the maximum x that we explore.
-
-        for x in range(min_x, max_x):
-
-            if not local and y == 0 and x > 0:    # First row: the cost of matching t with all gaps. If local, should be 0
-
-                D[0, x] = D[0, x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_")
-
-            elif not local and x == 0 and y > 0:  # First column: the cost of matching s with all gaps. If local, should be 0
-
-                D_y = 1 if sublinear else y
-
-                D[D_y, 0] = D[D_y - 1, 0] + cost(alphabet, scoring_matrix, s[y - 1], "_")
-
-            elif 0 < x < size_x and 0 < y:
-
-                D_y = 1 if sublinear else y
-
-                D[D_y, x] = max(
-                    D[D_y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),  # The cost of matching two characters
-                    D[D_y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"), # The cost of matching a gap in s with a character in t
-                    D[D_y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_") # The cost of matching a gap in t with a character in s
-                )
-
-                D[D_y, x] = 0 if (local and D[D_y, x] < threshold) else D[D_y, x]
-
-                if max_i is None or D[D_y, x] > max_score:
-
-                    max_i = y, x
-                    max_score = D[D_y, x]
-
-        if y > 0 and sublinear:
-
-            D[0] = D[1].copy()
-
-    return (D[1] if sublinear else D), max_i
-
-def build_lookup(s, ktup):
+def get_lookup(s, ktup):
 
     lookup = dict()
 
@@ -70,27 +21,7 @@ def build_lookup(s, ktup):
 
     return lookup
 
-def build_lookup_II(t, ktup, lookup):
-
-    lookup_II = dict()
-
-    for x in range(len(t) - ktup + 1):
-
-        word = t[x:x + ktup]
-
-        if word in lookup:
-
-            if word not in lookup_II:
-
-                lookup_II[word] = [x]
-
-            else:
-
-                lookup_II[word].append(x)
-
-    return lookup_II
-
-def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold):
+def get_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold):
 
     diagonals = dict()
 
@@ -112,6 +43,8 @@ def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold):
 
                 else:
 
+                    # diagonals[diagonal].append((x, y, ktup))
+
                     last_x, last_y, last_length = diagonals[diagonal][-1]  # Get the last entry on this diagonal
 
                     if last_x + last_length >= x and last_y + last_length >= y:  # If they overlap, update the old one
@@ -132,144 +65,204 @@ def build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold):
 
 # http://www.cs.tau.ac.il/~rshamir/algmb/98/scribe/html/lec03/node2.html
 
-def best_diagonal(s, t, diagonals):
+# The docs really SUCK, huh?
+# There's something too.
+# Combine diagonal runs.
+# Allow gaps / indels.
 
-    best_x, best_y = None, None
-    best_diagonal_length = 0
+# Construct a directed, weighted graph.
+# Vertices are the runs.
+# Edge weights represent gap peanlites.
+# BLAST is the fastest. Apparently.
+# Fuck it
+#
+
+# Find all k-length identities.
+# Then find locally similar regions by selecting those dense with identities.
+# Recore the regions by applying a substitution matrix.
+# Take the 10 best initial regions
+# Create an alignment of the trimmed initial regions using DP with a gap penalty of 20.
+# Exclude regions with too low a score.
+# Optimise the alignment using banded DP.
+
+def best_diagonal(alphabet, scoring_matrix, s, t, diagonals):
+
+    # best_x, best_y = None, None
+    best_diagonal = None
+    best_diagonal_score = 0
+
+    # We should use score here. Not length.
 
     for diagonal, seeds in diagonals.items():
 
-        diagonal_length = 0
-        diagonal_x, diagonal_y = len(s), len(t)
+        # That's wrong.
+        # Oh, I see. Fair enough!
+        # The calculation is... close.
+        # Wait. That's right.
+        # That is an unacceptably poor result.
+        # Lol.
+        # FUCK.
 
-        for seed in seeds:
+        start_x, start_y, _ = seeds[0]
+        end_x, end_y, length = seeds[-1]
 
-            x, y, length = seed
+        # print("seed_s", s[start_y: end_y + length])
+        # print("seed_t", t[start_x: end_x + length])
 
-            diagonal_length += length
+        diagonal_score = score(alphabet, scoring_matrix, s[start_y: end_y + length], t[start_x: end_x + length])
 
-            if x < diagonal_x:
+        # print(diagonal, diagonal_score)
 
-                diagonal_x = x
+        if diagonal_score > best_diagonal_score:
 
-            if y < diagonal_y:
+            best_diagonal = (diagonal, start_x, start_y, end_x + length, end_y + length)
+            best_diagonal_score = diagonal_score
 
-                diagonal_y = y
+    return best_diagonal
 
-        # print("{}: {} ({}, {})".format(diagonal, diagonal_length, diagonal_x, diagonal_y), end="\n")
-
-        if diagonal_length > best_diagonal_length:
-
-            best_x = diagonal_x
-            best_y = diagonal_y
-            best_diagonal_length = diagonal_length
-
-    return best_x, best_y
-
-# Find the 10 best diagonal runs.
-# Give each hot spot a socre, and give the space between between consecut
 
 def heuralign(alphabet, scoring_matrix, s, t):
 
-    scoring_matrix = np.array(scoring_matrix)
     alphabet += "_"
-    ktup = 2
+    scoring_matrix = np.array(scoring_matrix)
+
+    ktup = 2    # 6 for DNA sequence matching (|alphabet| = 4). 2 for protein sequence (|alphabet| = 20)
     threshold = get_threshold(alphabet, scoring_matrix, s, t)
 
-    lookup = build_lookup(s, ktup)
+    lookup = get_lookup(s, ktup)
 
-    print(lookup)
+    diagonals = get_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold)
 
-    lookup_ii = build_lookup_II(t, ktup, lookup)
-
-    print(lookup_ii)
-
-    diagonals = build_diagonals(alphabet, scoring_matrix, s, t, ktup, lookup, threshold)
-
-    # If I did it Peter's way...
+    # The hardest part is combining the diagonals, right?
+    # How tf is he going to check anyway/
 
     print(diagonals)
 
-    best_x, best_y = best_diagonal(s, t, diagonals)
+    diagonal, start_x, start_y, end_x, end_y = best_diagonal(alphabet, scoring_matrix, s, t, diagonals)
+    #
+    print(diagonal, start_x, start_y, end_x, end_y)
+    #
+    s = s[start_y: end_y]
+    t = t[start_x: end_x]
 
-    s = s[best_x:]
-    t = t[best_y:]
+    D, _ = score_matrix(alphabet, scoring_matrix, s, t, band_width=12, threshold=0)
+    #
+    score, s_matches, t_matches, s_align, t_align = traceback(alphabet, scoring_matrix, s, t, D, local=True)
 
-    D, _ = score_matrix(alphabet, scoring_matrix, s, t, band_width=10, threshold=threshold)
+    return score, s_matches + start_x, t_matches + start_y, s_align, t_align
+    #
+    # return 0, 0, 0, 0, 0
 
-    score, s_matches, t_matches, s_align, t_align = traceback(alphabet, scoring_matrix, s, t, D)
+def score(alphabet, scoring_matrix, s, t):
 
-    return score, s_matches + best_x, t_matches + best_y, s_align, t_align
+    score = 0
 
-def traceback(alphabet, scoring_matrix, s, t, D, local=True):
+    for i in range(min(len(s), len(t))):
 
-    score = np.amax(D) if local else D[-1][-1]
-    y, x = np.unravel_index(D.argmax(), D.shape) if local else (len(s), len(t))
+        score += cost(alphabet, scoring_matrix, s[i], t[i])
 
-    s_align, t_align = "", ""
-    s_matches, t_matches = [], []
+    return score
 
-    while y != 0 or x != 0:
+def score_seed(alphabet, scoring_matrix, s, t, seed):
 
-        current = D[y][x]
+    x, y, length = seed
+    score = 0
 
-        if local and current == 0:  # The end of the best local alignment
+    for i in range(length):
 
-            break
+        score += cost(alphabet, scoring_matrix, s[y + i], t[x + i])
 
-        elif current == D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]): # Match (D)
+    return score
 
-            x -= 1
-            y -= 1
+def evaluate(alphabet, scoring_matrix, s, t, diagonal):
 
-            s_align = s[y] + s_align
-            t_align = t[x] + t_align
+    if diagonal < 0:    #
 
-            s_matches.append(y)
-            t_matches.append(x)
+        x, y = 0, abs(diagonal)
+        limit = len(s) - y
 
-        elif current == D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"):  # Matching a gap in s with a character in t (L)
+    else:
 
-            x -= 1
-            s_align = "_" + s_align
-            t_align = t[x] + t_align
+        x, y = diagonal, 0
+        limit = len(t) - x
 
-        elif current == D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"):  # Matching a gap in t with a character in s (U)
+    score = 0
 
-            y -= 1
-            s_align = s[y] + s_align
-            t_align = "_" + t_align
+    for i in range(limit):
 
-        else:
+        score += cost(alphabet, scoring_matrix, s[y + i], t[x + i])
 
-            raise ValueError("Something's fucked!")
+    return score
 
-    return score, np.array(rev(s_matches)), np.array(rev(t_matches)), s_align, t_align
+
+
+
+
+
+    # If we have -2, for example.
+
+    # -2 = x - y
+    # As we know one of them must be 0.
+
+
+
+
+    # x, y, length = seed
+
+    # So we keep going back until one of them is 0.
+    # Is that a hard or easy problem? I can't even tell.
 
 def extend(alphabet, scoring_matrix, s, t, seed, threshold):
 
     x, y, length = seed
+
+    seed_score = score_seed(alphabet, scoring_matrix, s, t, seed)
+
+    # So. For each seed, we evaluate the score of that diagonal.
+
     up, down = 1, 1
 
     while up or down:
 
-        if x == 0 or y == 0 or cost(alphabet, scoring_matrix, t[x - 1], s[y - 1]) < threshold:
+        if x == 0 or y == 0:
 
             up = 0
 
         else:
 
-            x -= 1
-            y -= 1
-            length += 1
+            new_score = seed_score + cost(alphabet, scoring_matrix, t[x - 1], s[y - 1])
 
-        if x + length == len(t) or y + length == len(s) or cost(alphabet, scoring_matrix, t[x + 1], s[y + 1]) < threshold:
+            if new_score > threshold:
+
+                x -= 1
+                y -= 1
+                length += 1
+
+                seed_score = new_score
+
+            else:
+
+                up = 0
+
+        if x + length == len(t) or y + length == len(s):
 
             down = 0
 
         else:
 
-            length += 1
+            new_score = seed_score + cost(alphabet, scoring_matrix, t[x + 1], s[y + 1])
+
+            if new_score > threshold:
+
+                length += 1
+                seed_score = new_score
+
+            else:
+
+                down = 0
+
+    # print("Done", x, y, length)
+    # print("Score", seed_score)
 
     return x, y, length
 
@@ -283,18 +276,6 @@ def get_threshold(alphabet, scoring_matrix, s, t):
 
     return np.average([cost(alphabet, scoring_matrix, x, y) for (x, y) in pairs], weights=pair_weights)
 
-def align_score(alphabet, scoring_matrix, s_align, t_align):
-
-    assert(len(s_align) == len(t_align))
-
-    score = 0
-
-    for i in range(len(s_align)):
-
-        score += cost(alphabet, scoring_matrix, s_align[i], t_align[i])
-
-    return score
-
 def cost(alphabet, scoring_matrix, c1, c2):
 
     return scoring_matrix[alphabet.index(c1), alphabet.index(c2)]
@@ -302,6 +283,45 @@ def cost(alphabet, scoring_matrix, c1, c2):
 def rev(l):
 
     return l[::-1]
+
+# It is local, and it is not sublinear.
+
+def score_matrix(alphabet, scoring_matrix, s, t, band_width=None, threshold=0):
+
+    print(s, t)
+
+    size_y = len(s) + 1  # y-axis
+    size_x = len(t) + 1  # x-axis
+
+    D = np.zeros((size_y, size_x), dtype="int16")
+
+    max_i = None  # The index of the cell containing the maximum score
+    max_score = None  # The maximum score observed
+
+    for y in range(size_y):  # y
+
+        min_x = 0 if band_width is None else y - band_width  # If banded, the minimum x that we explore
+        max_x = size_x if band_width is None else y + band_width + 1  # If banded, the maximum x that we explore.
+
+        for x in range(min_x, max_x):
+
+            if 0 < x < size_x and 0 < y:
+
+                D[y, x] = max(
+                    D[y - 1][x - 1] + cost(alphabet, scoring_matrix, s[y - 1], t[x - 1]),
+                    D[y][x - 1] + cost(alphabet, scoring_matrix, t[x - 1], "_"),
+                    D[y - 1][x] + cost(alphabet, scoring_matrix, s[y - 1], "_"),
+                    threshold
+                )
+
+                if max_i is None or D[y, x] > max_score:
+
+                    max_i = y, x
+                    max_score = D[y, x]
+
+
+    return D, max_i
+
 
 # alphabet = "ABCD_"
 # scoring_matrix = [
@@ -316,4 +336,17 @@ def rev(l):
 # s = "ABCDABC"
 # t = "ABCAABC"
 
+# heuralign(alphabet, scoring_matrix, s, t)
+
+#
+# alphabet = "ABC_"
+# scoring_matrix = np.array([
+#             [1, -1, -2, -1],
+#             [-1, 2, -4, -1],
+#             [-2, -4, 3, -2],
+#             [-1, -1, -2, 0]
+# ])
+# s = "AABBAACA"
+# t = "CBACCCBA"
+#
 # heuralign(alphabet, scoring_matrix, s, t)

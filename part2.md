@@ -6,6 +6,11 @@ letters. Clearly describe it on at most one page. [15 marks]
 This substitution-cost function will operate on the standard DNA alphabet, i.e `ACGT`. The following rules are not
 defined with a biological purpose in mind. They are applicable to sequences of letters of any length.
 
+Explain how the function would actually work.
+While some rules are being met.
+But isn't this basically just then local alignment
+
+
 ## Rules
 
 ### 1. The cost of mismatch of a sequence of the same characters of length `n` is `n!`. 
